@@ -11,7 +11,7 @@
   <link rel="manifest" href="./manifest.webmanifest?v=7.3" />
   <link rel="icon" type="image/png" sizes="64x64" href="./icons/icon-64.png?v=7.3" />
   <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png?v=7.3" />
-  <title>みんなの単語帳</title>
+  <title>Beta みんなの単語帳 Beta</title>
   <style>
     :root {
       color-scheme: light;
@@ -925,7 +925,7 @@
   <main class="app">
     <header class="topbar">
       <div class="brand-lockup">
-        <h1>みんなの単語帳</h1>
+        <h1>Beta みんなの単語帳 Beta</h1>
         <div class="brand-kicker">MY VOCABULARY</div>
       </div>
       <button class="icon-button" id="installBtn" type="button" hidden aria-label="アプリをインストール">
@@ -1082,7 +1082,7 @@
           <h3>ノートを読み取らせる方法</h3>
           <p>ChatGPTなどの画像対応AIへ、下の文章とノート画像を一緒に送る。</p>
           <label for="aiReadPrompt">AIへ送る文章</label>
-          <textarea id="aiReadPrompt" readonly style="min-height:150px">この画像は英単語とそれに対応する日本語が書かれている。  英語と日本語を読み取れ。 1行につき「英語[TAB]日本語」 という形で出力しろ  また、読み取ったことのみ出力しろ  その他一切何も絶対に出力するな</textarea>
+          <textarea id="aiReadPrompt" readonly style="min-height:150px">この画像は英単語とそれに対応する日本語が書かれている。  英語と日本語を読み取れ。 1行につき「英語[TAB]日本語」 という形で必ずコードブロック内に入れ出力しろ  また、読み取ったことのみ出力しろ  その他一切何も絶対に出力するな</textarea>
           <div class="button-row"><button class="btn primary" type="button" id="copyAiPromptBtn">文章をコピー</button></div><div id="aiPromptNotice" aria-live="polite"></div>
           <p class="muted">AIの出力を上の入力欄へ貼り付けて登録する。</p>
         </section>
