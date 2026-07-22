@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#05080c" />
+  <meta name="theme-color" content="#39bdf8" />
   <meta name="description" content="端末内保存で使える英単語学習PWA" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="manifest" href="./manifest.webmanifest?v=6.6" />
-  <link rel="icon" type="image/png" sizes="64x64" href="./icons/icon-64-v3.png?v=6.6" />
-  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon-v3.png?v=6.6" />
+  <link rel="manifest" href="./manifest.webmanifest?v=7.3" />
+  <link rel="icon" type="image/png" sizes="64x64" href="./icons/icon-64.png?v=7.3" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png?v=7.3" />
   <title>みんなの単語帳</title>
   <style>
     :root {
@@ -779,6 +780,10 @@
       font-size: 1rem;
     }
     #answerInput:focus { border-color: rgba(42,144,255,.85); box-shadow: 0 0 0 3px rgba(22,132,255,.15); }
+    /* 日本語→英語でも入力文字を通常表示する。 */
+    #answerInput {
+      -webkit-text-security: none;
+    }
     body[data-accent="today"] #answerInput:focus { border-color: rgba(95,207,131,.85); box-shadow: 0 0 0 3px rgba(95,207,131,.14); }
     .inline-check { margin: 18px 0 20px; }
     .quiz-answer .button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 0; }
@@ -844,6 +849,77 @@
     }
 
   </style>
+
+  <style id="single-character-answer-style">
+    .single-character-panel {
+      display: none;
+      margin-top: 2px;
+      padding: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 14px;
+      background: rgba(5,10,16,.34);
+    }
+    body[data-single-character-answer="true"] .single-character-panel { display: block; }
+    .single-character-fields {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      min-height: 44px;
+      align-items: center;
+    }
+    .single-character-field {
+      width: 42px;
+      min-width: 42px;
+      height: 44px;
+      padding: 0;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 10px;
+      background: rgba(255,255,255,.055);
+      color: #f6f8fb;
+      text-align: center;
+      font-size: 1.2rem;
+      font-weight: 760;
+      line-height: 1;
+      caret-color: var(--blue);
+    }
+    .single-character-field:focus {
+      outline: none;
+      border-color: rgba(42,144,255,.85);
+      box-shadow: 0 0 0 3px rgba(22,132,255,.15);
+    }
+    body[data-accent="today"] .single-character-field { caret-color: var(--green); }
+    body[data-accent="today"] .single-character-field:focus {
+      border-color: rgba(95,207,131,.85);
+      box-shadow: 0 0 0 3px rgba(95,207,131,.14);
+    }
+    .single-character-field:disabled { opacity: .62; }
+    .single-character-hint {
+      margin: 9px 1px 0;
+      color: #8c96a2;
+      font-size: .76rem;
+      line-height: 1.35;
+    }
+    body[data-single-character-answer="true"] #answerInput {
+      position: absolute !important;
+      width: 1px !important;
+      min-width: 1px !important;
+      height: 1px !important;
+      margin: -1px !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      clip: rect(0 0 0 0) !important;
+      clip-path: inset(50%) !important;
+      white-space: nowrap !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+    @media (max-width: 520px) {
+      .single-character-panel { padding: 10px; }
+      .single-character-fields { gap: 6px; }
+      .single-character-field { width: 38px; min-width: 38px; height: 41px; font-size: 1.12rem; }
+    }
+  </style>
+
 </head>
 <body>
   <main class="app">
@@ -875,6 +951,7 @@
         </div>
         <div class="today-hero-content">
           <div class="today-count-line"><span class="today-prefix">あと</span><span class="today-number" id="todayReminderCount">0</span><span class="today-unit">個</span></div>
+          <div class="today-goal">今日の目標まで</div>
         </div>
         <svg class="today-wave-lines" viewBox="0 0 520 100" preserveAspectRatio="none" aria-hidden="true">
           <path class="wave-1" d="M-20 77 C70 19 126 29 196 71 S329 104 405 52 S493 23 548 40"/>
@@ -954,7 +1031,7 @@
             <div class="quiz-progress" id="quizProgress"></div><div class="question-label" id="questionLabel">日本語訳を入力</div><div class="question" id="questionText"></div>
             <button class="speak-button question-speak" type="button" id="speakQuestionBtn" hidden>発音を聞く</button>
             <div class="quiz-answer">
-              <label for="answerInput">回答</label><input id="answerInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="答えを入力" />
+              <label for="answerInput">回答</label><div class="single-character-panel" id="singleCharacterPanel"><div class="single-character-fields" id="singleCharacterFields" aria-label="英語を1文字ずつ入力"></div><p class="single-character-hint">1文字ごとに入力欄が分かれる。削除はBackspace。</p></div><input id="answerInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="text" enterkeyhint="done" name="quiz-answer-no-autofill" placeholder="答えを入力" />
               <label class="inline-check"><input type="checkbox" id="strictAnswer" />完全一致で判定する</label>
               <div class="button-row"><button class="btn primary" type="button" id="checkBtn">答え合わせ</button><button class="btn ghost" type="button" id="showAnswerBtn">答えを見る</button></div>
               <div class="feedback" id="feedback" aria-live="polite" hidden></div>
@@ -1077,8 +1154,8 @@
 
   <dialog id="editDialog"><form method="dialog" class="dialog-inner" id="editForm"><h2>単語を編集</h2><input type="hidden" id="editId" /><div class="grid"><div><label for="editEnglish">英語</label><input id="editEnglish" autocapitalize="none" spellcheck="true" required /></div><div><label for="editJapanese">日本語訳</label><input id="editJapanese" required /></div></div><div class="button-row"><button class="btn primary" value="save" type="submit">保存</button><button class="btn ghost" value="cancel" type="button" id="cancelEditBtn">キャンセル</button></div></form></dialog>
 
-  <script src="./spell-dictionary.js?v=6.6" defer></script>
-  <script src="./app.js?v=6.6" defer></script>
+  <script src="./spell-dictionary.js?v=7.3" defer></script>
+  <script src="./app.js?v=7.3" defer></script>
   <script>
     window.addEventListener("load", () => {
       const input = document.getElementById("quizCount");
@@ -1135,5 +1212,201 @@
       refreshAllButton();
     });
   </script>
+  <script>
+    window.addEventListener("load", () => {
+      const answerInput = document.getElementById("answerInput");
+      const questionLabel = document.getElementById("questionLabel");
+      const directionSelect = document.getElementById("quizDirection");
+      if (!answerInput || !questionLabel) return;
+
+      const setPredictionBlocking = (blocked) => {
+        // 入力文字を見える状態に固定する。
+        // visible text input のまま、Web側で指定可能な予測・自動修正抑止属性を適用する。
+        answerInput.type = "text";
+        answerInput.dataset.predictionBlocked = blocked ? "true" : "false";
+        answerInput.autocomplete = blocked ? "new-password" : "off";
+        answerInput.setAttribute("autocorrect", "off");
+        answerInput.setAttribute("autocapitalize", "none");
+        answerInput.spellcheck = false;
+        answerInput.inputMode = blocked ? "latin" : "text";
+        answerInput.style.removeProperty("-webkit-text-security");
+      };
+
+      const syncFromQuestion = () => {
+        setPredictionBlocking(questionLabel.textContent.trim() === "英語を入力");
+      };
+
+      // 固定方向では開始ボタンを押した時点でも先に切り替える。
+      document.getElementById("startQuizBtn")?.addEventListener("click", () => {
+        if (directionSelect?.value === "ja-en") setPredictionBlocking(true);
+        else if (directionSelect?.value === "en-ja") setPredictionBlocking(false);
+      }, true);
+
+      // ランダム出題を含め、各問題の方向が決まるたびに追従する。
+      new MutationObserver(syncFromQuestion).observe(questionLabel, {
+        childList: true,
+        characterData: true,
+        subtree: true
+      });
+
+      syncFromQuestion();
+    });
+  </script>
+
+  <script id="single-character-answer-script">
+    window.addEventListener("load", () => {
+      const answerInput = document.getElementById("answerInput");
+      const questionLabel = document.getElementById("questionLabel");
+      const questionText = document.getElementById("questionText");
+      const fieldsHost = document.getElementById("singleCharacterFields");
+      const checkButton = document.getElementById("checkBtn");
+      const startQuizButton = document.getElementById("startQuizBtn");
+      const directionSelect = document.getElementById("quizDirection");
+      if (!answerInput || !questionLabel || !questionText || !fieldsHost) return;
+
+      let singleCharacterMode = false;
+      let syncQueued = false;
+
+      const fields = () => [...fieldsHost.querySelectorAll(".single-character-field")];
+      const currentAnswer = () => fields().map((field) => field.value).join("");
+
+      const focusLastField = () => {
+        if (!singleCharacterMode || answerInput.disabled) return;
+        const list = fields();
+        const target = list.find((field) => !field.value) || list[list.length - 1];
+        target?.focus({ preventScroll: true });
+      };
+
+      const removeFieldsAfter = (index) => {
+        const list = fields();
+        for (let position = list.length - 1; position > index; position -= 1) {
+          list[position].remove();
+        }
+      };
+
+      const createField = (index) => {
+        const field = document.createElement("input");
+        field.type = "text";
+        field.className = "single-character-field";
+        field.maxLength = 1;
+        field.autocomplete = "new-password";
+        field.setAttribute("autocorrect", "off");
+        field.setAttribute("autocapitalize", "none");
+        field.spellcheck = false;
+        field.inputMode = "latin";
+        field.enterKeyHint = "done";
+        field.name = `quiz-letter-${index}-${Date.now().toString(36)}`;
+        field.setAttribute("aria-label", `${index + 1}文字目`);
+        field.disabled = answerInput.disabled;
+
+        field.addEventListener("paste", (event) => {
+          event.preventDefault();
+        });
+
+        field.addEventListener("input", () => {
+          const characters = Array.from(field.value);
+          field.value = characters[0] || "";
+          if (!field.value) return;
+
+          removeFieldsAfter(index);
+          const next = createField(index + 1);
+          fieldsHost.append(next);
+          next.focus({ preventScroll: true });
+        });
+
+        field.addEventListener("keydown", (event) => {
+          if (event.key === "Backspace" && !field.value && index > 0) {
+            event.preventDefault();
+            const list = fields();
+            const previous = list[index - 1];
+            field.remove();
+            if (previous) {
+              previous.value = "";
+              previous.focus({ preventScroll: true });
+            }
+            return;
+          }
+
+          if (event.key === "Enter") {
+            event.preventDefault();
+            answerInput.value = currentAnswer();
+            checkButton?.click();
+          }
+        });
+
+        return field;
+      };
+
+      const resetFields = ({ focus = false } = {}) => {
+        fieldsHost.replaceChildren();
+        fieldsHost.append(createField(0));
+        answerInput.value = "";
+        if (focus) requestAnimationFrame(focusLastField);
+      };
+
+      const setMode = (enabled, { reset = true, focus = false } = {}) => {
+        const nextMode = Boolean(enabled);
+        const changed = nextMode !== singleCharacterMode;
+        singleCharacterMode = nextMode;
+        document.body.dataset.singleCharacterAnswer = singleCharacterMode ? "true" : "false";
+
+        answerInput.autocomplete = singleCharacterMode ? "new-password" : "off";
+        answerInput.setAttribute("autocorrect", "off");
+        answerInput.setAttribute("autocapitalize", "none");
+        answerInput.spellcheck = false;
+        answerInput.inputMode = singleCharacterMode ? "latin" : "text";
+        answerInput.name = singleCharacterMode ? "quiz-answer-backing-field" : "quiz-answer-no-autofill";
+
+        if (singleCharacterMode && (changed || reset)) resetFields({ focus });
+        if (!singleCharacterMode && changed) {
+          fieldsHost.replaceChildren();
+          answerInput.value = "";
+        }
+      };
+
+      const syncFromQuestion = () => {
+        syncQueued = false;
+        const isEnglishAnswer = questionLabel.textContent.trim() === "英語を入力";
+        setMode(isEnglishAnswer, { reset: true, focus: isEnglishAnswer });
+      };
+
+      const queueQuestionSync = () => {
+        if (syncQueued) return;
+        syncQueued = true;
+        queueMicrotask(syncFromQuestion);
+      };
+
+      answerInput.addEventListener("focus", () => {
+        if (singleCharacterMode) requestAnimationFrame(focusLastField);
+      });
+
+      checkButton?.addEventListener("click", () => {
+        if (singleCharacterMode) answerInput.value = currentAnswer();
+      }, true);
+
+      startQuizButton?.addEventListener("click", () => {
+        if (directionSelect?.value === "ja-en") setMode(true, { reset: true, focus: false });
+        else if (directionSelect?.value === "en-ja") setMode(false, { reset: true, focus: false });
+      }, true);
+
+      new MutationObserver(queueQuestionSync).observe(questionLabel, {
+        childList: true,
+        characterData: true,
+        subtree: true
+      });
+      new MutationObserver(queueQuestionSync).observe(questionText, {
+        childList: true,
+        characterData: true,
+        subtree: true
+      });
+
+      new MutationObserver(() => {
+        for (const field of fields()) field.disabled = answerInput.disabled;
+      }).observe(answerInput, { attributes: true, attributeFilter: ["disabled"] });
+
+      setMode(questionLabel.textContent.trim() === "英語を入力", { reset: true, focus: false });
+    });
+  </script>
+
 </body>
 </html>
