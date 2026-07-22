@@ -1008,7 +1008,7 @@
     $("#quizSetupTitle").textContent = todayMode ? "今日の単語" : "問題";
     $("#quizSetupLead").textContent = todayMode
       ? "出題方向を選択する。"
-      : "出題方向・出題範囲・出題順を選択する。";
+      : "出題方向・出題範囲・出題順・問題数を選択する。";
     $("#quizRangeGroup").hidden = todayMode;
     $("#quizOrderGroup").hidden = todayMode;
     $("#quizToolbar").classList.toggle("today-mode", todayMode);
@@ -1068,8 +1068,8 @@
     return words;
   }
 
-  function usesQuestionLimit() {
-    return false;
+  function usesQuestionLimit(range = currentQuizRange()) {
+    return state.quizSetupMode !== "today" && range !== "today";
   }
 
   function updateQuizCountControl() {
