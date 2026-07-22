@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#05080c" />
+  <meta name="description" content="端末内保存で使える英単語学習PWA" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="./manifest.webmanifest?v=6.6" />
+  <link rel="icon" type="image/png" sizes="64x64" href="./icons/icon-64-v3.png?v=6.6" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon-v3.png?v=6.6" />
+  <title>みんなの単語帳</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f5f7;
+      --surface: rgba(255, 255, 255, 0.88);
+      --surface-solid: #ffffff;
+      --surface-soft: #f2f2f7;
+      --text: #1d1d1f;
+      --muted: #6e6e73;
+      --line: rgba(60, 60, 67, 0.14);
+      --blue: #007aff;
+      --blue-pressed: #0062cc;
+      --green: #34c759;
+      --red: #ff3b30;
+      --orange: #ff9500;
+      --shadow: 0 14px 40px rgba(0, 0, 0, 0.08);
+      --shadow-strong: 0 22px 60px rgba(0, 0, 0, 0.14);
+      --radius-xl: 30px;
+      --radius-lg: 22px;
+      --radius-md: 16px;
+      --dock-height: 78px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+        --bg: #000000;
+        --surface: rgba(28, 28, 30, 0.88);
+        --surface-solid: #1c1c1e;
+        --surface-soft: #2c2c2e;
+        --text: #f5f5f7;
+        --muted: #98989d;
+        --line: rgba(255, 255, 255, 0.13);
+        --blue: #0a84ff;
+        --blue-pressed: #409cff;
+        --green: #30d158;
+        --red: #ff453a;
+        --orange: #ff9f0a;
+        --shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+        --shadow-strong: 0 22px 60px rgba(0, 0, 0, 0.5);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 50% -10%, rgba(0, 122, 255, 0.11), transparent 32rem),
+        var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      line-height: 1.55;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    button:disabled { opacity: .42; cursor: default; }
+    input, select, textarea { color: var(--text); }
+    [hidden] { display: none !important; }
+
+    .app {
+      width: min(980px, calc(100% - 28px));
+      margin: 0 auto;
+      padding: max(24px, env(safe-area-inset-top)) 0 calc(var(--dock-height) + 54px + env(safe-area-inset-bottom));
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+    .brand-kicker { color: var(--muted); font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    h1 { margin: 2px 0 0; font-size: clamp(2rem, 6vw, 3.25rem); line-height: 1.03; letter-spacing: -.045em; }
+    h2 { margin: 0 0 16px; font-size: clamp(1.55rem, 4vw, 2.15rem); letter-spacing: -.035em; }
+    h3 { margin: 0 0 10px; font-size: 1.08rem; }
+    p { margin-top: 0; }
+    .muted { color: var(--muted); }
+
+    .icon-button {
+      width: 44px; height: 44px; border: 0; border-radius: 50%;
+      display: grid; place-items: center; background: var(--surface-solid); color: var(--text);
+      box-shadow: 0 4px 18px rgba(0,0,0,.08);
+    }
+    .icon-button svg { width: 22px; height: 22px; }
+
+    .panel { display: none; animation: panel-in .22s ease-out; }
+    .panel.active { display: block; }
+    @keyframes panel-in { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+
+    .glass-card, .card, .stat-card, .quiz-card, .status-card, .privacy-box, .notification-settings, .registration-warning, .analysis-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(24px) saturate(150%);
+      -webkit-backdrop-filter: blur(24px) saturate(150%);
+    }
+
+    .today-hero {
+      padding: clamp(22px, 5vw, 38px);
+      border-radius: var(--radius-xl);
+      background: linear-gradient(145deg, rgba(0,122,255,.98), rgba(88,86,214,.94));
+      color: white;
+      box-shadow: 0 22px 55px rgba(0, 122, 255, .25);
+      margin-bottom: 18px;
+      overflow: hidden;
+      position: relative;
+    }
+    .today-hero::after {
+      content: ""; position: absolute; width: 260px; height: 260px; border-radius: 50%; right: -100px; top: -120px;
+      background: rgba(255,255,255,.16); filter: blur(3px);
+    }
+    .today-label { font-size: .86rem; font-weight: 700; opacity: .82; }
+    .today-count-line { display: flex; align-items: baseline; gap: 8px; margin: 4px 0 16px; }
+    .today-number { font-size: clamp(3.4rem, 14vw, 6.8rem); font-weight: 750; line-height: .95; letter-spacing: -.07em; }
+    .today-unit { font-size: 1.15rem; font-weight: 650; }
+    .today-hero .btn { position: relative; z-index: 1; }
+
+    .today-guide {
+      margin: 0 0 18px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .today-guide summary {
+      list-style: none;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      color: var(--blue);
+      font-weight: 750;
+      cursor: pointer;
+      user-select: none;
+    }
+    .today-guide summary::-webkit-details-marker { display: none; }
+    .today-guide summary::after {
+      content: "＋";
+      font-size: 1.15rem;
+      font-weight: 500;
+      transition: transform .18s ease;
+    }
+    .today-guide[open] summary::after { transform: rotate(45deg); }
+    .today-guide p {
+      margin: 0;
+      padding: 0 16px 16px;
+      color: var(--muted);
+      line-height: 1.75;
+      font-size: .94rem;
+    }
+
+    .summary {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px;
+    }
+    .stat-card { padding: 17px; box-shadow: none; }
+    .stat-label { color: var(--muted); font-size: .78rem; font-weight: 650; }
+    .stat-value { margin-top: 4px; font-size: 1.65rem; font-weight: 750; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+
+    .section-card { padding: clamp(18px, 4vw, 28px); }
+    .section-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+
+    .btn {
+      min-height: 44px; padding: 10px 17px; border: 0; border-radius: 13px;
+      background: var(--surface-soft); color: var(--text); font-weight: 700;
+      transition: transform .12s ease, opacity .12s ease, background .12s ease;
+    }
+    .btn:active:not(:disabled) { transform: scale(.975); }
+    .btn.primary { background: var(--blue); color: #fff; }
+    .btn.primary:hover { background: var(--blue-pressed); }
+    .btn.ghost { border: 1px solid var(--line); background: var(--surface-solid); }
+    .btn.danger { background: rgba(255,59,48,.11); color: var(--red); }
+    .btn.small { min-height: 34px; padding: 6px 11px; font-size: .83rem; border-radius: 10px; }
+    .btn.approve { background: rgba(52,199,89,.14); color: var(--green); }
+    .btn.reject { background: rgba(255,59,48,.12); color: var(--red); }
+    .button-row { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 15px; }
+
+    .registration-choice {
+      display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px;
+    }
+    .choice-card {
+      text-align: left; border: 1px solid var(--line); border-radius: 24px; padding: 24px; min-height: 190px;
+      background: var(--surface-solid); color: var(--text); box-shadow: var(--shadow); position: relative;
+    }
+    .choice-card:active { transform: scale(.985); }
+    .choice-icon {
+      width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; margin-bottom: 28px;
+      background: rgba(0,122,255,.12); color: var(--blue);
+    }
+    .choice-icon svg { width: 28px; height: 28px; }
+    .choice-title { display: block; font-size: 1.25rem; font-weight: 760; letter-spacing: -.025em; }
+    .choice-detail { display: block; color: var(--muted); font-size: .88rem; margin-top: 4px; }
+    .choice-arrow { position: absolute; right: 20px; top: 22px; color: var(--muted); font-size: 1.35rem; }
+    .back-link { border: 0; background: transparent; color: var(--blue); padding: 0; margin-bottom: 18px; font-weight: 650; }
+
+    .grid { display: grid; gap: 14px; }
+    .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    label { display: block; margin-bottom: 7px; font-size: .86rem; font-weight: 700; }
+    input, select, textarea {
+      width: 100%; border: 1px solid transparent; border-radius: 14px; padding: 13px 14px;
+      background: var(--surface-soft); outline: none;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--blue); box-shadow: 0 0 0 4px rgba(0,122,255,.13); }
+    textarea { min-height: 180px; resize: vertical; }
+    .input-speak { margin-top: 8px; }
+    .speak-button { border: 0; border-radius: 11px; padding: 7px 10px; background: rgba(0,122,255,.10); color: var(--blue); font-weight: 700; }
+
+    .quiz-toolbar { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 16px; }
+    .quiz-toolbar.today-mode { grid-template-columns: minmax(0, 1fr); max-width: 430px; }
+    .quiz-setup-card { padding: clamp(20px, 5vw, 32px); }
+    .quiz-setup-actions { display: flex; justify-content: flex-end; margin-top: 18px; }
+    .quiz-setup-actions .btn { min-width: min(100%, 220px); }
+    .quiz-setup-notice { margin-top: 14px; }
+    body.quiz-playing .topbar,
+    body.quiz-playing .backup-banner,
+    body.quiz-playing .bottom-backup { display: none !important; }
+    body.quiz-playing .app { padding-top: max(14px, env(safe-area-inset-top)); }
+    body.quiz-playing #panel-quiz.active { min-height: calc(100vh - var(--dock-height) - 86px - env(safe-area-inset-bottom)); }
+    .quiz-card { padding: clamp(20px, 5vw, 40px); min-height: 410px; display: grid; align-content: center; text-align: center; }
+    .quiz-progress, .question-label { color: var(--muted); font-size: .83rem; font-weight: 700; }
+    .question { margin: 10px 0 14px; font-size: clamp(2.5rem, 10vw, 5.4rem); line-height: 1.05; font-weight: 760; overflow-wrap: anywhere; letter-spacing: -.045em; }
+    .quiz-answer { max-width: 590px; width: 100%; margin: 18px auto 0; text-align: left; }
+    .inline-check { display: flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 500; margin-top: 10px; }
+    .inline-check input { width: auto; accent-color: var(--blue); }
+    .feedback { margin-top: 15px; min-height: 58px; padding: clamp(16px, 4vw, 24px); border-radius: 20px; background: var(--surface-soft); }
+    .feedback.correct { color: var(--green); }
+    .feedback.wrong { color: var(--red); }
+    .result-status { text-align: center; font-size: clamp(2rem, 8vw, 3.8rem); font-weight: 850; line-height: 1; letter-spacing: -.045em; }
+    .result-status.correct { color: var(--green); }
+    .result-status.wrong { color: var(--red); }
+    .result-note { margin-top: 9px; text-align: center; color: var(--muted); font-size: .9rem; font-weight: 650; }
+    .correct-answer-card { margin-top: 18px; padding: clamp(18px, 4vw, 28px); border-radius: 20px; background: var(--surface-solid); border: 2px solid var(--blue); text-align: center; color: var(--text); }
+    .feedback.correct .correct-answer-card { border-color: var(--green); }
+    .feedback.wrong .correct-answer-card { border-color: var(--red); }
+    .correct-answer-label { display: block; color: var(--muted); font-size: clamp(.95rem, 3vw, 1.15rem); font-weight: 750; }
+    .correct-answer-text { margin-top: 8px; font-size: clamp(2.7rem, 11vw, 5.6rem); font-weight: 850; line-height: 1.06; letter-spacing: -.05em; overflow-wrap: anywhere; }
+    .correct-answer-card .speak-button { margin-top: 16px; }
+    .manual-judge-panel { margin-top: 16px; border: 1px solid var(--line); border-radius: 18px; padding: 16px; background: var(--surface-solid); }
+    .manual-judge-title { font-weight: 750; margin-bottom: 10px; }
+    .manual-judge-actions { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; }
+    .quiz-next-row { display: flex; justify-content: flex-end; margin-top: 14px; }
+    .next-small { min-height: 34px; padding: 6px 12px; font-size: .83rem; color: var(--blue); background: rgba(0,122,255,.10); }
+
+    .table-tools { display: flex; gap: 10px; justify-content: space-between; margin-bottom: 13px; }
+    .table-tools input { flex: 1; }
+    .table-tools select { width: min(270px, 42%); }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 18px; background: var(--surface-solid); }
+    table { width: 100%; border-collapse: collapse; min-width: 720px; }
+    th, td { padding: 13px 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
+    th { color: var(--muted); font-size: .78rem; background: var(--surface-soft); }
+    tr:last-child td { border-bottom: 0; }
+    .number { text-align: right; font-variant-numeric: tabular-nums; }
+    .mistake-count { color: var(--red); font-weight: 750; }
+    .english-with-audio { display: flex; align-items: center; gap: 7px; }
+    .word-actions { display: flex; gap: 7px; }
+    .empty { color: var(--muted); text-align: center; padding: 34px 12px; }
+
+    .notice { margin-top: 12px; padding: 12px 14px; border-radius: 13px; background: rgba(0,122,255,.10); }
+    .notice.success { background: rgba(52,199,89,.11); }
+    .notice.error { background: rgba(255,59,48,.11); }
+    .registration-warning { padding: 17px; margin-top: 14px; border-color: rgba(255,149,0,.4); }
+    .registration-warning-title { color: var(--orange); font-weight: 760; }
+    .registration-warning-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px; }
+    .warning-list { display: grid; gap: 9px; margin-top: 12px; }
+    .warning-item { padding: 11px 12px; border-radius: 13px; background: var(--surface-soft); }
+    .spell-status { min-height: 22px; margin-top: 7px; color: var(--muted); font-size: .8rem; }
+    .spell-status.ok { color: var(--green); }
+    .spell-status.warning { color: var(--orange); }
+    .spell-suggestions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+    .spell-chip { border: 0; border-radius: 999px; padding: 5px 10px; background: rgba(0,122,255,.11); color: var(--blue); font-weight: 700; }
+    .duplicate-detail { margin-top: 9px; padding: 10px 12px; border-radius: 12px; background: var(--surface-soft); }
+
+    .analysis-summary { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-bottom: 14px; }
+    .analysis-card { padding: clamp(17px, 4vw, 24px); margin-bottom: 14px; box-shadow: none; }
+    .chart-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+    .chart-head h3 { margin-bottom: 2px; }
+    .chart-total { font-size: 1.55rem; font-weight: 760; letter-spacing: -.04em; }
+    .chart-wrap { position: relative; width: 100%; height: 250px; }
+    .chart-wrap canvas { width: 100%; height: 100%; display: block; }
+    .analysis-note { margin-top: 10px; color: var(--muted); font-size: .78rem; }
+    .privacy-box, .notification-settings { padding: 18px; box-shadow: none; margin-top: 16px; }
+    .status-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 11px; }
+    .status-card { padding: 16px; box-shadow: none; }
+    .status-title, .status-detail { color: var(--muted); font-size: .78rem; }
+    .status-main { font-size: 1.02rem; font-weight: 750; margin: 3px 0; }
+    .notification-times { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+
+    .backup-banner {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 14px 16px; margin-bottom: 16px; border-radius: 18px; background: rgba(255,149,0,.12); border: 1px solid rgba(255,149,0,.25);
+    }
+    .bottom-backup { margin-top: 28px; display: flex; justify-content: center; }
+    .bottom-backup .btn { color: var(--muted); background: transparent; box-shadow: none; }
+
+    .bottom-dock {
+      position: fixed; z-index: 50; left: 50%; bottom: max(10px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+      width: min(900px, calc(100% - 18px)); min-height: var(--dock-height); padding: 7px;
+      display: flex; gap: 7px;
+      background: rgba(245,245,247,.78); border: 1px solid rgba(255,255,255,.55); border-radius: 25px;
+      box-shadow: var(--shadow-strong); backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%);
+    }
+    @media (prefers-color-scheme: dark) { .bottom-dock { background: rgba(28,28,30,.78); border-color: rgba(255,255,255,.12); } }
+    .dock-tabs { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 3px; }
+    .dock-settings { flex: 0 0 62px; padding-left: 7px; border-left: 1px solid var(--line); display: flex; }
+    .settings-launch, .tab {
+      border: 0; background: transparent; color: var(--muted); border-radius: 18px; min-width: 0; width: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: .66rem; font-weight: 650;
+    }
+    .settings-launch svg, .tab svg { width: 23px; height: 23px; }
+    .settings-launch { color: var(--muted); }
+    .tab.active { color: var(--blue); background: rgba(0,122,255,.10); }
+
+    dialog {
+      color: var(--text); border: 0; padding: 0; background: transparent;
+    }
+    dialog::backdrop { background: rgba(0,0,0,.34); backdrop-filter: blur(4px); }
+    .settings-dialog { width: min(720px, calc(100% - 20px)); max-height: min(88vh, 900px); }
+    .settings-sheet {
+      background: var(--surface-solid); border: 1px solid var(--line); border-radius: 30px; padding: 22px; max-height: inherit; overflow-y: auto; box-shadow: var(--shadow-strong);
+    }
+    .settings-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+    .settings-head h2 { margin: 0; }
+    .dialog-inner { background: var(--surface-solid); border: 1px solid var(--line); border-radius: 25px; padding: 22px; box-shadow: var(--shadow-strong); }
+    #editDialog { width: min(520px, calc(100% - 20px)); }
+
+    /* 通常時は保存保護警告を表示しない。実際の保存失敗は設定画面の状態で確認できる。 */
+    #storageWarning { display: none !important; }
+
+    @media (max-width: 760px) {
+      .app { width: min(100% - 20px, 650px); }
+      .topbar { margin-bottom: 15px; }
+      .summary { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .quiz-toolbar { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .grid-2, .registration-choice, .status-grid { grid-template-columns: 1fr; }
+      .notification-times { grid-template-columns: 1fr; }
+      .table-tools { flex-direction: column; }
+      .table-tools select { width: 100%; }
+      .choice-card { min-height: 150px; }
+      .choice-icon { margin-bottom: 18px; }
+      .bottom-dock { gap: 4px; padding: 6px; }
+      .dock-settings { flex-basis: 48px; padding-left: 4px; }
+      .settings-launch span, .tab span { font-size: .55rem; }
+      .analysis-summary { grid-template-columns: 1fr; }
+      .chart-wrap { height: 220px; }
+      .backup-banner { align-items: flex-start; flex-direction: column; }
+      .manual-judge-actions { grid-template-columns: 1fr; }
+      table.word-management-table { min-width: 0; }
+      .word-management-table thead { display: none; }
+      .word-management-table, .word-management-table tbody, .word-management-table tr, .word-management-table td { display: block; width: 100%; }
+      .word-management-table tr { padding: 15px; border-bottom: 1px solid var(--line); }
+      .word-management-table tr:last-child { border-bottom: 0; }
+      .word-management-table td { border: 0; padding: 5px 0; text-align: left; }
+      .word-management-table td::before { content: attr(data-label); display: inline-block; min-width: 68px; color: var(--muted); font-size: .72rem; margin-right: 8px; }
+      .word-management-table .word-main-cell::before, .word-management-table .word-actions-cell::before { display: none; }
+      .word-management-table .word-main-cell { font-size: 1.18rem; padding-bottom: 8px; }
+      .word-actions { margin-top: 7px; }
+    }
+
+
+    /* v6.6 — reference-based dark iOS redesign */
+    :root {
+      color-scheme: dark;
+      --bg: #05080c;
+      --surface: rgba(20, 26, 32, .88);
+      --surface-solid: #11171d;
+      --surface-soft: #171e25;
+      --text: #f5f7fa;
+      --muted: #9099a4;
+      --line: rgba(255, 255, 255, .10);
+      --blue: #1684ff;
+      --blue-pressed: #0b6fe2;
+      --green: #5fcf83;
+      --red: #ff5e57;
+      --orange: #ffae42;
+      --shadow: 0 18px 50px rgba(0, 0, 0, .30);
+      --shadow-strong: 0 22px 70px rgba(0, 0, 0, .55);
+      --radius-xl: 24px;
+      --radius-lg: 18px;
+      --radius-md: 14px;
+      --dock-height: 74px;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        color-scheme: dark;
+        --bg: #05080c;
+        --surface: rgba(20, 26, 32, .88);
+        --surface-solid: #11171d;
+        --surface-soft: #171e25;
+        --text: #f5f7fa;
+        --muted: #9099a4;
+        --line: rgba(255, 255, 255, .10);
+        --blue: #1684ff;
+        --blue-pressed: #0b6fe2;
+        --green: #5fcf83;
+        --red: #ff5e57;
+        --orange: #ffae42;
+      }
+    }
+
+    html { background: #020407; }
+    body {
+      background:
+        radial-gradient(circle at 50% -8%, rgba(41, 108, 178, .12), transparent 24rem),
+        linear-gradient(180deg, #050a0f 0%, #030609 54%, #020407 100%);
+      min-height: 100dvh;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(255,255,255,.008) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.006) 1px, transparent 1px);
+      background-size: 28px 28px;
+      mask-image: linear-gradient(to bottom, black, transparent 75%);
+    }
+
+    .app {
+      width: min(520px, calc(100% - 24px));
+      padding: max(18px, env(safe-area-inset-top)) 0 calc(var(--dock-height) + 38px + env(safe-area-inset-bottom));
+    }
+    .topbar {
+      position: relative;
+      min-height: 72px;
+      justify-content: center;
+      text-align: center;
+      margin-bottom: 22px;
+    }
+    .brand-lockup { display: grid; justify-items: center; }
+    .topbar h1 {
+      margin: 0;
+      font-size: clamp(1.2rem, 5vw, 1.55rem);
+      line-height: 1.1;
+      letter-spacing: -.035em;
+      font-weight: 760;
+    }
+    .brand-kicker {
+      margin-top: 5px;
+      color: #788390;
+      font-size: .66rem;
+      font-weight: 650;
+      letter-spacing: .16em;
+    }
+    .topbar .icon-button { position: absolute; right: 0; top: 4px; }
+
+    .screen-heading {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      margin: 2px 2px 24px;
+    }
+    .screen-heading h2 {
+      margin: 0;
+      font-size: clamp(1.6rem, 7vw, 2.05rem);
+      letter-spacing: -.04em;
+      font-weight: 790;
+    }
+    .screen-icon, .setting-icon {
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+    }
+    .screen-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+    }
+    .screen-icon svg { width: 24px; height: 24px; }
+    .quiz-heading .screen-icon {
+      color: #55a7ff;
+      background: linear-gradient(145deg, rgba(28, 111, 220, .36), rgba(14, 55, 111, .44));
+      box-shadow: inset 0 1px rgba(255,255,255,.12), 0 10px 24px rgba(0,104,255,.12);
+    }
+    .today-heading .screen-icon {
+      color: #86e5a2;
+      background: linear-gradient(145deg, rgba(49, 145, 80, .36), rgba(17, 78, 43, .46));
+      box-shadow: inset 0 1px rgba(255,255,255,.12), 0 10px 24px rgba(53,199,89,.10);
+    }
+    .screen-lead {
+      margin: 0 2px 13px;
+      color: #a4adb7;
+      font-size: .96rem;
+    }
+
+    .glass-card, .card, .stat-card, .quiz-card, .status-card, .privacy-box, .notification-settings, .registration-warning, .analysis-card,
+    .today-guide, .setting-card {
+      background: linear-gradient(145deg, rgba(25, 31, 38, .90), rgba(15, 20, 26, .92));
+      border: 1px solid rgba(255,255,255,.09);
+      box-shadow: inset 0 1px rgba(255,255,255,.035), 0 16px 45px rgba(0,0,0,.24);
+      backdrop-filter: blur(24px) saturate(130%);
+      -webkit-backdrop-filter: blur(24px) saturate(130%);
+    }
+
+    .today-hero {
+      position: relative;
+      min-height: 178px;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      margin-bottom: 24px;
+      color: var(--text);
+      text-align: center;
+      background:
+        radial-gradient(circle at 86% 12%, rgba(89, 213, 130, .10), transparent 12rem),
+        linear-gradient(145deg, rgba(24, 30, 36, .96), rgba(14, 20, 25, .96));
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 20px;
+      box-shadow: inset 0 1px rgba(255,255,255,.04), 0 18px 48px rgba(0,0,0,.30);
+      overflow: hidden;
+    }
+    .today-hero::after { display: none; }
+    .today-hero-content { position: relative; z-index: 3; }
+    .today-label { color: #e8edf2; opacity: 1; font-size: .92rem; letter-spacing: .01em; }
+    .today-count-line {
+      justify-content: center;
+      align-items: baseline;
+      gap: 10px;
+      margin: 4px 0 0;
+    }
+    .today-prefix, .today-unit { font-size: 1.28rem; font-weight: 760; }
+    .today-number {
+      color: #6bd18b;
+      font-size: clamp(4rem, 18vw, 5.6rem);
+      line-height: .95;
+      font-weight: 820;
+      letter-spacing: -.06em;
+      text-shadow: 0 0 28px rgba(70, 213, 118, .16);
+    }
+    .today-wave {
+      position: absolute;
+      z-index: 1;
+      left: -8%;
+      right: -8%;
+      bottom: -62px;
+      height: 132px;
+      border-radius: 50% 48% 0 0;
+      background: linear-gradient(180deg, rgba(52, 181, 98, .28), rgba(27, 97, 55, .10));
+      transform: rotate(-7deg);
+      box-shadow: 0 -1px 0 rgba(104, 231, 146, .18), 0 -20px 45px rgba(45, 187, 94, .06);
+    }
+    .today-wave::before {
+      content: "";
+      position: absolute;
+      inset: -23px -8% auto 9%;
+      height: 92px;
+      border-radius: 50%;
+      background: linear-gradient(180deg, rgba(39, 151, 78, .18), rgba(22, 78, 45, .06));
+      transform: rotate(6deg);
+      border-top: 1px solid rgba(102, 222, 138, .12);
+    }
+    .today-wave::after {
+      content: "✦  ·  ✦";
+      position: absolute;
+      top: -44px;
+      left: 8%;
+      right: 4%;
+      color: rgba(109, 228, 145, .35);
+      font-size: .76rem;
+      letter-spacing: 8rem;
+      white-space: nowrap;
+    }
+
+    .setting-stack {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin: 0 0 18px;
+      max-width: none;
+    }
+    .setting-card {
+      min-height: 92px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px;
+      border-radius: 18px;
+    }
+    .setting-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 13px;
+      color: #74b9ff;
+      background: linear-gradient(145deg, rgba(34, 104, 202, .35), rgba(18, 53, 108, .50));
+      box-shadow: inset 0 1px rgba(255,255,255,.10);
+    }
+    .setting-icon svg { width: 24px; height: 24px; }
+    .today-setting-card .setting-icon {
+      color: #8de4a5;
+      background: linear-gradient(145deg, rgba(49, 145, 80, .36), rgba(17, 78, 43, .50));
+    }
+    .setting-control { flex: 1; min-width: 0; }
+    .setting-control label {
+      margin: 0 0 5px;
+      color: #a6afb9;
+      font-size: .78rem;
+      font-weight: 650;
+    }
+    .setting-control select,
+    .setting-control input {
+      height: 46px;
+      color: #f6f8fa;
+      background: rgba(8, 12, 16, .45);
+      border: 1px solid rgba(255,255,255,.13);
+      border-radius: 12px;
+      box-shadow: inset 0 1px 4px rgba(0,0,0,.22);
+    }
+    .setting-control select { padding: 0 38px 0 12px; }
+    .setting-control input { padding: 0 12px; font-variant-numeric: tabular-nums; }
+    .setting-control select:focus,
+    .setting-control input:focus { border-color: rgba(58,151,255,.75); box-shadow: 0 0 0 3px rgba(22,132,255,.14); }
+    .today-setting-card .setting-control select:focus,
+    .today-setting-card .setting-control input:focus { border-color: rgba(95,207,131,.75); box-shadow: 0 0 0 3px rgba(95,207,131,.13); }
+    .count-choice-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 9px;
+    }
+    .count-input-wrap { position: relative; min-width: 0; }
+    .count-input-wrap input { padding-right: 46px; }
+    .count-input-unit {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #8f99a4;
+      font-size: .82rem;
+      font-weight: 700;
+      pointer-events: none;
+    }
+    .count-all-button {
+      min-width: 68px;
+      height: 46px;
+      padding: 0 15px;
+      border: 1px solid rgba(255,255,255,.13);
+      border-radius: 12px;
+      color: #c6ced7;
+      background: rgba(8, 12, 16, .45);
+      font-size: .88rem;
+      font-weight: 750;
+      box-shadow: inset 0 1px 4px rgba(0,0,0,.22);
+      transition: border-color .15s ease, background .15s ease, color .15s ease, transform .12s ease;
+    }
+    .count-all-button:active:not(:disabled) { transform: scale(.97); }
+    .count-all-button[aria-pressed="true"] {
+      color: #fff;
+      border-color: rgba(65, 157, 255, .82);
+      background: linear-gradient(180deg, rgba(39, 137, 244, .92), rgba(14, 91, 194, .92));
+      box-shadow: 0 0 0 3px rgba(22,132,255,.11), inset 0 1px rgba(255,255,255,.14);
+    }
+    .count-all-button:disabled { opacity: .42; }
+
+    .launch-button {
+      width: 100%;
+      min-height: 62px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin: 8px 0 24px;
+      border-radius: 15px;
+      font-size: 1.03rem;
+      font-weight: 780;
+      box-shadow: 0 15px 34px rgba(0, 104, 255, .20), inset 0 1px rgba(255,255,255,.18);
+    }
+    .btn.primary.quiz-launch { background: linear-gradient(180deg, #248cff, #0868df); }
+    .btn.primary.today-launch {
+      background: linear-gradient(180deg, #67d68b, #42af67);
+      box-shadow: 0 15px 34px rgba(47, 184, 92, .18), inset 0 1px rgba(255,255,255,.20);
+    }
+    .launch-icon {
+      width: 21px;
+      height: 21px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: currentColor;
+      background: rgba(255,255,255,.90);
+      font-size: .58rem;
+      padding-left: 1px;
+    }
+    .quiz-launch .launch-icon { color: #147cf1; }
+    .today-launch .launch-icon { color: #42ad66; }
+
+    .quiz-toolbar.today-mode { max-width: none; }
+    .quiz-setup-card, .quiz-setup-actions { display: contents; }
+    .quiz-setup-actions .btn { min-width: 0; }
+
+    body.quiz-playing .topbar { display: flex !important; }
+    body.quiz-playing .app { padding-top: max(18px, env(safe-area-inset-top)); }
+    body.quiz-playing #panel-quiz.active { min-height: 0; }
+    body.quiz-playing #quizSetupView { display: none !important; }
+    .quiz-card {
+      position: relative;
+      min-height: 500px;
+      padding: clamp(25px, 7vw, 42px) clamp(18px, 5vw, 30px);
+      border-radius: 22px;
+      background:
+        radial-gradient(circle at 50% 12%, rgba(30, 132, 255, .09), transparent 15rem),
+        linear-gradient(145deg, rgba(23, 30, 37, .97), rgba(12, 17, 22, .97));
+      border: 1px solid rgba(40, 144, 255, .64);
+      box-shadow: inset 0 1px rgba(255,255,255,.05), 0 0 0 1px rgba(13,101,210,.12), 0 0 24px rgba(23,126,255,.28), 0 22px 58px rgba(0,0,0,.35);
+    }
+    body[data-accent="today"] .quiz-card {
+      background:
+        radial-gradient(circle at 50% 12%, rgba(78, 199, 116, .09), transparent 15rem),
+        linear-gradient(145deg, rgba(23, 31, 28, .97), rgba(12, 18, 15, .97));
+      border-color: rgba(85, 211, 125, .68);
+      box-shadow: inset 0 1px rgba(255,255,255,.05), 0 0 0 1px rgba(42,133,72,.12), 0 0 24px rgba(69,199,108,.26), 0 22px 58px rgba(0,0,0,.35);
+    }
+    .quiz-progress { color: #b6bec7; font-size: .9rem; }
+    .question-label { margin-top: 6px; color: #d9dee4; font-size: .9rem; }
+    .question {
+      margin: 30px 0 42px;
+      font-size: clamp(3.2rem, 17vw, 5.3rem);
+      font-weight: 820;
+      letter-spacing: -.055em;
+      text-shadow: 0 5px 18px rgba(0,0,0,.35);
+    }
+    .quiz-answer { margin-top: 0; }
+    .quiz-answer > label[for="answerInput"] { color: #c3cad2; font-size: .85rem; }
+    #answerInput {
+      min-height: 58px;
+      background: rgba(4, 8, 12, .55);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 13px;
+      font-size: 1rem;
+    }
+    #answerInput:focus { border-color: rgba(42,144,255,.85); box-shadow: 0 0 0 3px rgba(22,132,255,.15); }
+    body[data-accent="today"] #answerInput:focus { border-color: rgba(95,207,131,.85); box-shadow: 0 0 0 3px rgba(95,207,131,.14); }
+    .inline-check { margin: 18px 0 20px; }
+    .quiz-answer .button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 0; }
+    .quiz-answer .button-row .btn { min-height: 58px; border-radius: 13px; }
+    body[data-accent="today"] #checkBtn { background: linear-gradient(180deg, #64d389, #3eaa63); }
+    #showAnswerBtn { background: rgba(18,24,30,.80); border-color: rgba(255,255,255,.12); }
+    .feedback { min-height: 0; background: rgba(5,9,13,.48); }
+    .correct-answer-card { background: rgba(8,12,16,.78); }
+
+    .today-guide {
+      margin-top: 12px;
+      margin-bottom: 0;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .today-guide summary { min-height: 54px; padding: 13px 16px; color: #bcc4cc; }
+    .today-heading + .today-hero + .screen-lead + .today-setting-card + .today-launch + .today-guide summary { color: #b9c2ca; }
+    .today-guide[open] summary { color: #dce2e7; }
+    .today-guide p { color: #909aa4; }
+    .today-data-body { padding: 0 14px 16px; }
+    .today-data-guide .summary { margin: 0 0 14px; }
+    .today-list-section { padding-top: 4px; }
+
+    input, select, textarea { background: #151c23; border-color: rgba(255,255,255,.08); }
+    input:focus, select:focus, textarea:focus { border-color: var(--blue); }
+    .choice-card { background: linear-gradient(145deg, #161d24, #0f141a); }
+    .table-wrap { background: #0f151b; }
+    th { background: #171e25; }
+    .settings-sheet, .dialog-inner { background: #0d1319; }
+
+    .bottom-dock {
+      width: min(510px, calc(100% - 16px));
+      min-height: var(--dock-height);
+      padding: 6px;
+      background: rgba(18, 24, 30, .84);
+      border-color: rgba(255,255,255,.11);
+      border-radius: 22px;
+      box-shadow: 0 18px 48px rgba(0,0,0,.52), inset 0 1px rgba(255,255,255,.045);
+    }
+    .settings-launch, .tab { border-radius: 14px; color: #87919c; }
+    .settings-launch svg, .tab svg { width: 22px; height: 22px; }
+    .tab.active { color: #4ea8ff; background: linear-gradient(180deg, rgba(33,115,220,.28), rgba(18,62,121,.22)); }
+    body[data-accent="today"] .tab[data-tab="today"].active {
+      color: #65d488;
+      background: linear-gradient(180deg, rgba(51,145,82,.28), rgba(22,76,42,.24));
+    }
+    .settings-launch span, .tab span { font-size: .59rem; }
+
+    @media (max-width: 760px) {
+      .app { width: min(100% - 22px, 520px); }
+      .topbar { margin-bottom: 16px; }
+      .screen-heading { margin-bottom: 21px; }
+      .quiz-toolbar { grid-template-columns: 1fr; }
+      .setting-card { min-height: 88px; }
+      .quiz-card { min-height: min(520px, calc(100dvh - 190px)); }
+      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .bottom-dock { bottom: max(7px, env(safe-area-inset-bottom)); }
+    }
+
+    @media (min-width: 780px) {
+      .app { width: min(620px, calc(100% - 40px)); }
+      .bottom-dock { width: min(610px, calc(100% - 28px)); }
+    }
+
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand-lockup">
+        <h1>みんなの単語帳</h1>
+        <div class="brand-kicker">MY VOCABULARY</div>
+      </div>
+      <button class="icon-button" id="installBtn" type="button" hidden aria-label="アプリをインストール">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M5 15v4h14v-4"/></svg>
+      </button>
+    </header>
+
+    <section class="backup-banner" id="backupBanner" hidden aria-live="polite">
+      <div><strong>バックアップを推奨</strong><div class="muted" id="backupBannerText"></div></div>
+      <div class="button-row" style="margin:0"><button class="btn primary" id="backupNowBtn" type="button">今すぐ保存</button><button class="btn ghost" id="dismissBackupBtn" type="button">7日後</button></div>
+    </section>
+
+    <section class="panel active" id="panel-today">
+      <div class="screen-heading today-heading">
+        <span class="screen-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16v15H4zM8 3v4m8-4v4M4 9h16"/><path d="M8 13h3v3H8z"/></svg></span>
+        <h2>今日</h2>
+      </div>
+
+      <section class="today-hero">
+        <div class="today-hero-content">
+          <div class="today-label">今日の単語</div>
+          <div class="today-count-line"><span class="today-prefix">あと</span><span class="today-number" id="todayReminderCount">0</span><span class="today-unit">個</span></div>
+        </div>
+        <div class="today-wave" aria-hidden="true"></div>
+      </section>
+
+      <p class="screen-lead">学習条件を選んで開始します</p>
+      <section class="setting-card today-setting-card">
+        <span class="setting-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h13m-5-5 5 5-5 5"/></svg></span>
+        <div class="setting-control">
+          <label for="todayQuizDirection">出題方向</label>
+          <select id="todayQuizDirection"><option value="en-ja">英語 → 日本語</option><option value="ja-en">日本語 → 英語</option><option value="random">ランダム</option></select>
+        </div>
+      </section>
+      <button class="btn primary launch-button today-launch" type="button" id="startTodayBtn"><span>学習開始</span><span class="launch-icon" aria-hidden="true">▶</span></button>
+
+      <details class="today-guide">
+        <summary>今日の単語について</summary>
+        <p>まだ一度も解いていない問題と、間違えた日から1日後・4日後・7日後・14日後・30日後の単語を表示する。期限を過ぎても、正解するまで今日の単語に残る。</p>
+      </details>
+
+      <details class="today-guide today-data-guide">
+        <summary>学習状況と対象単語</summary>
+        <div class="today-data-body">
+          <section class="summary" aria-label="学習状況">
+            <div class="stat-card"><div class="stat-label">登録単語</div><div class="stat-value" id="statWords">0</div></div>
+            <div class="stat-card"><div class="stat-label">総回答数</div><div class="stat-value" id="statAnswers">0</div></div>
+            <div class="stat-card"><div class="stat-label">正解数</div><div class="stat-value" id="statCorrect">0</div></div>
+            <div class="stat-card"><div class="stat-label">正答率</div><div class="stat-value" id="statRate">—</div></div>
+            <div class="stat-card" hidden><div class="stat-label">今日の単語</div><div class="stat-value" id="statToday">0</div></div>
+          </section>
+          <section class="today-list-section">
+            <div class="section-header"><div><h3>今日の学習</h3><p class="muted" id="todayMessage">今日の学習対象はない。</p></div><div class="stat-value" id="todayCount">0</div></div>
+            <div id="todayTable"></div>
+          </section>
+        </div>
+      </details>
+    </section>
+
+    <section class="panel" id="panel-quiz">
+      <div id="quizSetupView">
+        <div class="screen-heading quiz-heading">
+          <span class="screen-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 4h10a2 2 0 0 1 2 2v14l-7-3-7 3V6a2 2 0 0 1 2-2Z"/><path d="M9 8h6m-6 4h4"/></svg></span>
+          <h2 id="quizSetupTitle">問題</h2>
+        </div>
+        <p class="screen-lead" id="quizSetupLead">条件を選んで問題を開始します</p>
+        <section class="quiz-toolbar setting-stack" id="quizToolbar">
+          <div class="setting-card">
+            <span class="setting-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h13m-5-5 5 5-5 5"/></svg></span>
+            <div class="setting-control"><label for="quizDirection">出題方向</label><select id="quizDirection"><option value="en-ja">英語 → 日本語</option><option value="ja-en">日本語 → 英語</option><option value="random">ランダム</option></select></div>
+          </div>
+          <div class="setting-card" id="quizRangeGroup">
+            <span class="setting-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 4h12v16H6z"/><path d="M9 8h6m-6 4h6m-6 4h4"/></svg></span>
+            <div class="setting-control"><label for="quizRange">出題範囲</label><select id="quizRange"><option value="all">すべての単語</option><option value="mistakes">間違えた単語のみ</option><option value="unanswered">未回答の単語のみ</option></select></div>
+          </div>
+          <div class="setting-card" id="quizOrderGroup">
+            <span class="setting-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 7h10l-3-3m3 3-3 3M16 17H6l3 3m-3-3 3-3"/></svg></span>
+            <div class="setting-control"><label for="quizOrder">出題順</label><select id="quizOrder"><option value="random">ランダム</option><option value="mistakes-desc">誤答回数が多い順</option><option value="newest">新しい順</option></select></div>
+          </div>
+          <div class="setting-card" id="quizCountGroup">
+            <span class="setting-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 4h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg></span>
+            <div class="setting-control"><label for="quizCount">問題数</label><div class="count-choice-row"><div class="count-input-wrap"><input id="quizCount" type="number" min="1" value="10" inputmode="numeric" /><span class="count-input-unit">問</span></div><button class="count-all-button" id="quizCountAllBtn" type="button" aria-pressed="false">全部</button></div></div>
+          </div>
+        </section>
+        <button class="btn primary launch-button quiz-launch" type="button" id="startQuizBtn"><span>問題開始</span><span class="launch-icon" aria-hidden="true">▶</span></button>
+        <div class="quiz-setup-notice" id="quizSetupNotice" hidden aria-live="polite"></div>
+      </div>
+
+      <div id="quizPlayView" hidden>
+        <div class="quiz-card" id="quizCard">
+          <div id="quizEmpty"><p class="empty">単語を登録すると問題を開始できる。</p><button class="btn primary" type="button" id="quizEmptyAction">単語を登録する</button></div>
+          <div id="quizContent" hidden>
+            <div class="quiz-progress" id="quizProgress"></div><div class="question-label" id="questionLabel">日本語訳を入力</div><div class="question" id="questionText"></div>
+            <button class="speak-button question-speak" type="button" id="speakQuestionBtn" hidden>発音を聞く</button>
+            <div class="quiz-answer">
+              <label for="answerInput">回答</label><input id="answerInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="答えを入力" />
+              <label class="inline-check"><input type="checkbox" id="strictAnswer" />完全一致で判定する</label>
+              <div class="button-row"><button class="btn primary" type="button" id="checkBtn">答え合わせ</button><button class="btn ghost" type="button" id="showAnswerBtn">答えを見る</button></div>
+              <div class="feedback" id="feedback" aria-live="polite" hidden></div>
+              <div class="manual-judge-panel" id="manualJudgeRow" hidden><div class="manual-judge-title">この回答をどう記録するか選択</div><div class="manual-judge-actions"><button class="btn approve" type="button" id="markCorrectBtn">正解として扱う</button><button class="btn reject" type="button" id="markWrongBtn">不正解として記録</button></div></div>
+              <div class="quiz-next-row" id="quizNextRow" hidden><button class="btn next-small" type="button" id="nextBtn">次の問題へ</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-add">
+      <h2>単語登録</h2>
+      <div id="registrationChooser">
+        <p class="muted">登録方法を選択する。</p>
+        <div class="registration-choice">
+          <button class="choice-card" type="button" data-register-mode="single"><span class="choice-arrow">›</span><span class="choice-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg></span><span class="choice-title">一つずつ登録</span><span class="choice-detail">英単語と日本語訳を確認しながら追加</span></button>
+          <button class="choice-card" type="button" data-register-mode="bulk"><span class="choice-arrow">›</span><span class="choice-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span><span class="choice-title">まとめて登録</span><span class="choice-detail">タブ区切り・CSV・AI読取結果を一括追加</span></button>
+        </div>
+      </div>
+
+      <div id="singleRegistrationView" hidden>
+        <button class="back-link" type="button" data-registration-back>‹ 登録方法へ戻る</button>
+        <section class="card section-card">
+          <h3>一つずつ登録</h3>
+          <form id="addForm">
+            <div class="grid grid-2"><div><label for="englishInput">英単語・英語表現</label><input id="englishInput" autocomplete="off" autocapitalize="none" spellcheck="true" placeholder="例: accomplish" required /><div class="spell-status" id="spellCheckStatus" aria-live="polite"></div><button class="speak-button input-speak" type="button" id="speakEnglishInputBtn">発音を聞く</button></div><div><label for="japaneseInput">日本語訳</label><input id="japaneseInput" autocomplete="off" placeholder="例: 達成する、成し遂げる" required /></div></div>
+            <p class="muted">複数の正解は「,」「、」「/」「;」で区切る。</p>
+            <div class="button-row"><button class="btn primary" type="submit">追加する</button><button class="btn ghost" type="button" id="addAndContinueBtn">続けて追加</button></div>
+            <div id="addNotice" aria-live="polite"></div>
+            <div class="registration-warning" id="registrationWarning" hidden><div class="registration-warning-title" id="registrationWarningTitle">登録内容を確認</div><div id="registrationWarningBody"></div><div class="registration-warning-actions"><button class="btn primary" type="button" id="applySpellSuggestionBtn" hidden>候補を使う</button><button class="btn ghost" type="button" id="confirmRegistrationBtn" hidden>この内容で登録</button><button class="btn ghost small" type="button" id="cancelRegistrationWarningBtn">入力を修正する</button></div></div>
+          </form>
+        </section>
+      </div>
+
+      <div id="bulkRegistrationView" hidden>
+        <button class="back-link" type="button" data-registration-back>‹ 登録方法へ戻る</button>
+        <section class="card section-card">
+          <h3>まとめて登録</h3>
+          <p class="muted">1行につき「英語[TAB]日本語」または「英語,日本語」。Excelやスプレッドシートからの貼り付けにも対応する。</p>
+          <textarea id="bulkInput" placeholder="apple&#9;りんご&#10;study&#9;勉強する、研究する"></textarea>
+          <div class="button-row"><button class="btn primary" type="button" id="bulkAddBtn">まとめて追加</button></div>
+          <div id="bulkNotice" aria-live="polite"></div>
+          <div class="registration-warning" id="bulkSpellWarning" hidden><div class="registration-warning-title">スペルを確認する必要がある単語</div><div class="warning-list" id="bulkSpellWarningList"></div><div class="registration-warning-actions"><button class="btn primary" type="button" id="useBulkSpellSuggestionsBtn">候補を適用して登録</button><button class="btn ghost" type="button" id="keepBulkSpellingsBtn">入力の綴りで登録</button><button class="btn ghost small" type="button" id="cancelBulkSpellWarningBtn">登録しない</button></div></div>
+          <div class="registration-warning" id="bulkDuplicateReport" hidden><div class="registration-warning-title">重複登録の確認</div><div class="warning-list" id="bulkDuplicateReportList"></div></div>
+        </section>
+        <section class="privacy-box">
+          <h3>ノートを読み取らせる方法</h3>
+          <p>ChatGPTなどの画像対応AIへ、下の文章とノート画像を一緒に送る。</p>
+          <label for="aiReadPrompt">AIへ送る文章</label>
+          <textarea id="aiReadPrompt" readonly style="min-height:150px">この画像は英単語とそれに対応する日本語が書かれている。  英語と日本語を読み取れ。 1行につき「英語[TAB]日本語」 という形で出力しろ  また、読み取ったことのみ出力しろ  その他一切何も絶対に出力するな</textarea>
+          <div class="button-row"><button class="btn primary" type="button" id="copyAiPromptBtn">文章をコピー</button></div><div id="aiPromptNotice" aria-live="polite"></div>
+          <p class="muted">AIの出力を上の入力欄へ貼り付けて登録する。</p>
+        </section>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-list">
+      <h2>全単語</h2>
+      <div class="table-tools">
+        <input id="searchInput" type="search" placeholder="英語・日本語で検索" />
+        <select id="listSort"><option value="newest">新しい順</option><option value="oldest">古い順</option><option value="english">英語 A–Z</option><option value="mistakes-desc">誤答が多い順</option><option value="accuracy-asc">正答率が低い順</option><option value="unanswered-first">未回答を先頭</option></select>
+      </div>
+      <div id="wordTable"></div><div id="listNotice" aria-live="polite"></div>
+    </section>
+
+    <section class="panel" id="panel-analysis">
+      <h2>分析</h2>
+      <p class="muted">直近30日間の学習量を端末内の記録から集計する。</p>
+      <div class="analysis-summary">
+        <div class="stat-card"><div class="stat-label">30日間の追加単語</div><div class="stat-value" id="analysisAddedTotal">0</div></div>
+        <div class="stat-card"><div class="stat-label">30日間に解いた問題</div><div class="stat-value" id="analysisAnsweredTotal">0</div></div>
+      </div>
+      <section class="analysis-card">
+        <div class="chart-head"><div><h3>追加した単語数</h3><div class="muted">日別・過去30日</div></div><div class="chart-total" id="addedChartTotal">0語</div></div>
+        <div class="chart-wrap"><canvas id="addedWordsChart" aria-label="過去30日の追加単語数グラフ"></canvas></div>
+      </section>
+      <section class="analysis-card">
+        <div class="chart-head"><div><h3>解いた問題数</h3><div class="muted">日別・過去30日</div></div><div class="chart-total" id="answeredChartTotal">0問</div></div>
+        <div class="chart-wrap"><canvas id="answeredQuestionsChart" aria-label="過去30日の解答問題数グラフ"></canvas></div>
+        <div class="analysis-note">回答履歴はこの機能を追加した版以降の解答を記録する。追加前の正解日時は復元できない。</div>
+      </section>
+    </section>
+
+    <div class="bottom-backup"><button class="btn" id="exportBtn" type="button">バックアップを書き出す</button></div>
+
+    <section id="storageWarning" hidden aria-live="polite"><div class="muted"></div><button id="retryPersistBtn" type="button">再試行</button></section>
+    <div id="mistakeTable" hidden></div>
+  </main>
+
+  <nav class="bottom-dock" aria-label="モード切替">
+    <div class="dock-tabs">
+      <button class="tab active" data-tab="today" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16v15H4zM8 3v4m8-4v4M4 9h16"/></svg><span>今日</span></button>
+      <button class="tab" data-tab="quiz" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 4h10a2 2 0 0 1 2 2v14l-7-3-7 3V6a2 2 0 0 1 2-2Z"/><path d="M9 8h6m-6 4h4"/></svg><span>問題</span></button>
+      <button class="tab" data-tab="add" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg><span>登録</span></button>
+      <button class="tab" data-tab="list" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg><span>全単語</span></button>
+      <button class="tab" data-tab="analysis" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/></svg><span>分析</span></button>
+    </div>
+    <div class="dock-settings">
+      <button class="settings-launch" id="settingsBtn" type="button" aria-label="設定"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V20h-3v-.08a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 0 0 7 15a1.7 1.7 0 0 0-1.56-1.03H5v-3h.44A1.7 1.7 0 0 0 7 9.94a1.7 1.7 0 0 0-.34-1.88L6.6 8l2.12-2.12.06.06a1.7 1.7 0 0 0 1.88.34A1.7 1.7 0 0 0 11.69 4.7V4h3v.7a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06L19.78 8l-.06.06a1.7 1.7 0 0 0-.34 1.88A1.7 1.7 0 0 0 20.94 11H21v3h-.06A1.7 1.7 0 0 0 19.4 15Z"/></svg><span>設定</span></button>
+    </div>
+  </nav>
+
+  <dialog id="settingsDialog" class="settings-dialog">
+    <div class="settings-sheet">
+      <div class="settings-head"><h2>設定</h2><button class="icon-button" id="settingsCloseBtn" type="button" aria-label="閉じる">×</button></div>
+      <p class="muted">単語と学習記録はこの端末のIndexedDBへ自動保存される。</p>
+      <div class="status-grid">
+        <div class="status-card"><div class="status-title">保存先</div><div class="status-main" id="databaseStatus">確認中</div><div class="status-detail" id="databaseDetail"></div></div>
+        <div class="status-card"><div class="status-title">保存保護</div><div class="status-main" id="persistenceStatus">確認中</div><div class="status-detail" id="persistenceDetail"></div></div>
+        <div class="status-card"><div class="status-title">最終バックアップ</div><div class="status-main" id="lastBackupStatus">未実施</div><div class="status-detail" id="backupChangeStatus"></div></div>
+        <div class="status-card"><div class="status-title">使用容量</div><div class="status-main" id="storageUsageStatus">確認中</div><div class="status-detail">ブラウザが報告できる場合のみ</div></div>
+      </div>
+      <div class="notification-settings"><h3>今日の単語の通知</h3><p class="muted">任意の時刻を最大3件設定できる。アプリ終了中の通知は端末・ブラウザによって制限される。</p><div class="notification-times"><div><label for="notificationTime1">通知1</label><input type="time" id="notificationTime1" /></div><div><label for="notificationTime2">通知2</label><input type="time" id="notificationTime2" /></div><div><label for="notificationTime3">通知3</label><input type="time" id="notificationTime3" /></div></div><div class="button-row"><button class="btn primary" type="button" id="saveNotificationSettingsBtn">通知を有効化</button><button class="btn ghost" type="button" id="disableNotificationsBtn">無効化</button></div><div class="status-detail" id="notificationStatus"></div></div>
+      <div class="button-row"><button class="btn primary" type="button" id="exportBtn2">JSONバックアップ</button><label class="btn ghost" style="display:inline-flex;align-items:center">バックアップを読み込む<input id="importInput" type="file" accept=".json,application/json" hidden /></label><button class="btn ghost" type="button" id="exportCsvBtn">CSVを書き出す</button><button class="btn ghost" type="button" id="retryPersistBtn2">保存保護を再試行</button><button class="btn danger" type="button" id="clearAllBtn">全データを削除</button></div>
+      <div id="dataNotice" aria-live="polite"></div>
+      <div class="privacy-box"><h3>保存上の注意</h3><p>データは現在のブラウザと公開URLに紐づく。ブラウザ変更、URL変更、サイトデータ削除、端末故障時はJSONバックアップから復元する。</p><p class="muted">アカウント・クラウドDB・アクセス解析は使用しない。</p></div>
+    </div>
+  </dialog>
+
+  <dialog id="editDialog"><form method="dialog" class="dialog-inner" id="editForm"><h2>単語を編集</h2><input type="hidden" id="editId" /><div class="grid"><div><label for="editEnglish">英語</label><input id="editEnglish" autocapitalize="none" spellcheck="true" required /></div><div><label for="editJapanese">日本語訳</label><input id="editJapanese" required /></div></div><div class="button-row"><button class="btn primary" value="save" type="submit">保存</button><button class="btn ghost" value="cancel" type="button" id="cancelEditBtn">キャンセル</button></div></form></dialog>
+
+  <script src="./spell-dictionary.js?v=6.6" defer></script>
+  <script src="./app.js?v=6.6" defer></script>
+  <script>
+    window.addEventListener("load", () => {
+      const input = document.getElementById("quizCount");
+      const allButton = document.getElementById("quizCountAllBtn");
+      const range = document.getElementById("quizRange");
+      if (!input || !allButton) return;
+
+      let allMode = false;
+
+      const availableCount = () => {
+        const max = Number.parseInt(input.max, 10);
+        return Number.isFinite(max) && max > 0 ? max : 0;
+      };
+
+      const refreshAllButton = () => {
+        const available = availableCount();
+        allButton.disabled = input.disabled || available === 0;
+        const selected = allMode && available > 0 && Number.parseInt(input.value, 10) === available;
+        allButton.setAttribute("aria-pressed", selected ? "true" : "false");
+      };
+
+      const applyAll = ({ notify = true } = {}) => {
+        const available = availableCount();
+        if (!available || input.disabled) {
+          allMode = false;
+          refreshAllButton();
+          return;
+        }
+        allMode = true;
+        input.value = String(available);
+        if (notify) input.dispatchEvent(new Event("change", { bubbles: true }));
+        refreshAllButton();
+      };
+
+      allButton.addEventListener("click", () => applyAll());
+      input.addEventListener("input", () => {
+        allMode = false;
+        refreshAllButton();
+      });
+      input.addEventListener("change", refreshAllButton);
+
+      range?.addEventListener("change", () => {
+        queueMicrotask(() => {
+          if (allMode) applyAll();
+          else refreshAllButton();
+        });
+      });
+
+      new MutationObserver(() => {
+        if (allMode) applyAll({ notify: false });
+        else refreshAllButton();
+      }).observe(input, { attributes: true, attributeFilter: ["max", "disabled"] });
+
+      refreshAllButton();
+    });
+  </script>
+</body>
+</html>
