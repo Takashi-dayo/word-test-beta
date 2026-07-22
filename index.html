@@ -10,7 +10,7 @@
   <link rel="manifest" href="./manifest.webmanifest?v=6.6" />
   <link rel="icon" type="image/png" sizes="64x64" href="./icons/icon-64-v3.png?v=6.6" />
   <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon-v3.png?v=6.6" />
-  <title>Beta みんなの単語帳 Beta</title>
+  <title>みんなの単語帳</title>
   <style>
     :root {
       color-scheme: light;
@@ -779,6 +779,10 @@
       font-size: 1rem;
     }
     #answerInput:focus { border-color: rgba(42,144,255,.85); box-shadow: 0 0 0 3px rgba(22,132,255,.15); }
+    /* 日本語→英語では password 型として扱い、予測変換を抑止しつつ文字は表示する。 */
+    #answerInput[data-prediction-blocked="true"] {
+      -webkit-text-security: none !important;
+    }
     body[data-accent="today"] #answerInput:focus { border-color: rgba(95,207,131,.85); box-shadow: 0 0 0 3px rgba(95,207,131,.14); }
     .inline-check { margin: 18px 0 20px; }
     .quiz-answer .button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 0; }
@@ -849,7 +853,7 @@
   <main class="app">
     <header class="topbar">
       <div class="brand-lockup">
-        <h1>Beta みんなの単語帳 Beta</h1>
+        <h1>みんなの単語帳</h1>
         <div class="brand-kicker">MY VOCABULARY</div>
       </div>
       <button class="icon-button" id="installBtn" type="button" hidden aria-label="アプリをインストール">
@@ -875,6 +879,7 @@
         </div>
         <div class="today-hero-content">
           <div class="today-count-line"><span class="today-prefix">あと</span><span class="today-number" id="todayReminderCount">0</span><span class="today-unit">個</span></div>
+          <div class="today-goal">今日の目標まで</div>
         </div>
         <svg class="today-wave-lines" viewBox="0 0 520 100" preserveAspectRatio="none" aria-hidden="true">
           <path class="wave-1" d="M-20 77 C70 19 126 29 196 71 S329 104 405 52 S493 23 548 40"/>
@@ -954,7 +959,7 @@
             <div class="quiz-progress" id="quizProgress"></div><div class="question-label" id="questionLabel">日本語訳を入力</div><div class="question" id="questionText"></div>
             <button class="speak-button question-speak" type="button" id="speakQuestionBtn" hidden>発音を聞く</button>
             <div class="quiz-answer">
-              <label for="answerInput">回答</label><input id="answerInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="答えを入力" />
+              <label for="answerInput">回答</label><input id="answerInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="text" enterkeyhint="done" name="quiz-answer-no-autofill" placeholder="答えを入力" />
               <label class="inline-check"><input type="checkbox" id="strictAnswer" />完全一致で判定する</label>
               <div class="button-row"><button class="btn primary" type="button" id="checkBtn">答え合わせ</button><button class="btn ghost" type="button" id="showAnswerBtn">答えを見る</button></div>
               <div class="feedback" id="feedback" aria-live="polite" hidden></div>
@@ -1133,6 +1138,57 @@
       }).observe(input, { attributes: true, attributeFilter: ["max", "disabled"] });
 
       refreshAllButton();
+    });
+  </script>
+  <script>
+    window.addEventListener("load", () => {
+      const answerInput = document.getElementById("answerInput");
+      const questionLabel = document.getElementById("questionLabel");
+      const directionSelect = document.getElementById("quizDirection");
+      if (!answerInput || !questionLabel) return;
+
+      const setPredictionBlocking = (blocked) => {
+        const wasFocused = document.activeElement === answerInput;
+        const selectionStart = answerInput.selectionStart;
+        const selectionEnd = answerInput.selectionEnd;
+
+        // password 型ではモバイルOSの学習候補・予測候補が原則無効になる。
+        // CSSでマスクだけ解除し、入力した英字は通常どおり見えるようにする。
+        answerInput.type = blocked ? "password" : "text";
+        answerInput.dataset.predictionBlocked = blocked ? "true" : "false";
+        answerInput.autocomplete = blocked ? "one-time-code" : "off";
+        answerInput.setAttribute("autocorrect", "off");
+        answerInput.setAttribute("autocapitalize", "none");
+        answerInput.spellcheck = false;
+        answerInput.inputMode = "text";
+        answerInput.style.setProperty("-webkit-text-security", "none", "important");
+
+        if (wasFocused) {
+          answerInput.focus({ preventScroll: true });
+          if (selectionStart !== null && selectionEnd !== null) {
+            try { answerInput.setSelectionRange(selectionStart, selectionEnd); } catch (_) {}
+          }
+        }
+      };
+
+      const syncFromQuestion = () => {
+        setPredictionBlocking(questionLabel.textContent.trim() === "英語を入力");
+      };
+
+      // 固定方向では開始ボタンを押した時点でも先に切り替える。
+      document.getElementById("startQuizBtn")?.addEventListener("click", () => {
+        if (directionSelect?.value === "ja-en") setPredictionBlocking(true);
+        else if (directionSelect?.value === "en-ja") setPredictionBlocking(false);
+      }, true);
+
+      // ランダム出題を含め、各問題の方向が決まるたびに追従する。
+      new MutationObserver(syncFromQuestion).observe(questionLabel, {
+        childList: true,
+        characterData: true,
+        subtree: true
+      });
+
+      syncFromQuestion();
     });
   </script>
 </body>
