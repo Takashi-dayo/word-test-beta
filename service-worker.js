@@ -1,15 +1,14 @@
-const CACHE_NAME = "word-study-app-shell-v7-2";
+const CACHE_NAME = "word-study-app-shell-v6-6";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./spell-dictionary.js?v=7.2",
-  "./app.js?v=7.2",
-  "./manifest.webmanifest?v=7.2",
-  "./icons/icon-64.png",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
-  "./icons/icon-maskable-512.png",
-  "./icons/apple-touch-icon.png"
+  "./spell-dictionary.js?v=6.6",
+  "./app.js?v=6.6",
+  "./manifest.webmanifest?v=6.6",
+  "./icons/icon-192-v3.png",
+  "./icons/icon-64-v3.png",
+  "./icons/apple-touch-icon-v3.png",
+  "./icons/icon-512-v3.png"
 ];
 
 self.addEventListener("install", (event) => {
@@ -59,6 +58,7 @@ self.addEventListener("fetch", (event) => {
     })
   );
 });
+
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
