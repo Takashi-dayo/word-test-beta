@@ -29,7 +29,6 @@
     quizSessionComplete: false,
     manualJudgePending: false,
     quizRangeOverride: null,
-    quizSetupMode: "standard",
     pendingRegistration: null,
     pendingBulkSpellWarnings: []
   };
@@ -823,23 +822,19 @@
     if (dialog?.open) dialog.close();
   }
 
-  function switchTab(tabName, options = {}) {
-    const todayQuiz = tabName === "quiz" && options.quizMode === "today";
-    const activeTabName = todayQuiz ? "today" : tabName;
-    if (tabName !== "quiz") document.body.classList.remove("quiz-playing");
-    document.body.dataset.accent = activeTabName === "today" ? "today" : "quiz";
-
+  function switchTab(tabName) {
+    if (tabName === "quiz" && state.quizRangeOverride === "today") {
+      const todayTabActive = $(".tab.active")?.dataset.tab === "today";
+      if (!todayTabActive) state.quizRangeOverride = null;
+    }
     $$(".tab").forEach((tab) => {
-      const active = tab.dataset.tab === activeTabName;
+      const active = tab.dataset.tab === tabName;
       tab.classList.toggle("active", active);
       tab.setAttribute("aria-current", active ? "page" : "false");
     });
     $$(".panel").forEach((panel) => panel.classList.toggle("active", panel.id === `panel-${tabName}`));
 
-    if (tabName === "quiz") {
-      showQuizSetup(todayQuiz ? "today" : "standard");
-      if (options.autoStart === true) startQuizFromSetup();
-    }
+    if (tabName === "quiz") prepareQuiz();
     if (tabName === "today") renderToday();
     if (tabName === "add") showRegistrationChooser();
     if (tabName === "list") renderWordList();
@@ -856,7 +851,8 @@
     $("#statCorrect").textContent = totalCorrect;
     $("#statRate").textContent = totalAnswers ? `${Math.round((totalCorrect / totalAnswers) * 100)}%` : "—";
     $("#statToday").textContent = todayCount;
-    if ($("#todayReminderCount")) $("#todayReminderCount").textContent = String(todayCount);
+    if ($("#todayReminderCount")) $("#todayReminderCount").textContent = `あと${todayCount}個`;
+    if ($("#openTodayBtn")) $("#openTodayBtn").disabled = todayCount === 0;
   }
 
   function getAccuracy(word) {
@@ -996,66 +992,6 @@
       </div>`;
   }
 
-  function showQuizSetup(mode = "standard") {
-    const todayMode = mode === "today";
-    state.quizSetupMode = todayMode ? "today" : "standard";
-    state.quizRangeOverride = todayMode ? "today" : null;
-    resetQuizSession();
-
-    document.body.classList.remove("quiz-playing");
-    $("#quizSetupView").hidden = false;
-    $("#quizPlayView").hidden = true;
-    $("#quizSetupTitle").textContent = todayMode ? "今日の単語" : "問題";
-    $("#quizSetupLead").textContent = todayMode
-      ? "出題方向を選択する。"
-      : "出題方向・出題範囲・出題順・問題数を選択する。";
-    $("#quizRangeGroup").hidden = todayMode;
-    $("#quizOrderGroup").hidden = todayMode;
-    $("#quizToolbar").classList.toggle("today-mode", todayMode);
-    if (todayMode) $("#quizOrder").value = "random";
-
-    updateQuizCountControl();
-    updateQuizSetupAvailability();
-  }
-
-  function showQuizPlayView() {
-    document.body.classList.add("quiz-playing");
-    $("#quizSetupView").hidden = true;
-    $("#quizPlayView").hidden = false;
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  function updateQuizSetupAvailability() {
-    const count = getFilteredQuizWords().length;
-    const button = $("#startQuizBtn");
-    const notice = $("#quizSetupNotice");
-    if (!button || !notice) return;
-
-    button.disabled = count === 0;
-    if (count > 0) {
-      notice.hidden = true;
-      notice.textContent = "";
-      return;
-    }
-
-    notice.hidden = false;
-    notice.className = "quiz-setup-notice notice error";
-    notice.textContent = state.words.length
-      ? "選択した出題範囲に該当する単語がない。"
-      : "単語を登録すると問題を開始できる。";
-  }
-
-  function startQuizFromSetup() {
-    updateQuizCountControl();
-    if (!getFilteredQuizWords().length) {
-      updateQuizSetupAvailability();
-      return;
-    }
-    resetQuizSession();
-    showQuizPlayView();
-    startQuizSession();
-  }
-
   function currentQuizRange() {
     return state.quizRangeOverride || $("#quizRange").value;
   }
@@ -1069,7 +1005,7 @@
   }
 
   function usesQuestionLimit(range = currentQuizRange()) {
-    return state.quizSetupMode !== "today" && range !== "today";
+    return range === "all" || range === "mistakes";
   }
 
   function updateQuizCountControl() {
@@ -1250,6 +1186,7 @@
     $("#answerInput").disabled = false;
     $("#checkBtn").hidden = false;
     $("#showAnswerBtn").hidden = false;
+    $("#skipBtn").hidden = false;
     $("#quizNextRow").hidden = true;
     $("#nextBtn").textContent = "次の問題へ";
     $("#nextBtn").className = "btn next-small";
@@ -1257,8 +1194,7 @@
     $("#markCorrectBtn").disabled = false;
     $("#markWrongBtn").disabled = false;
     $("#feedback").className = "feedback";
-    $("#feedback").textContent = "";
-    $("#feedback").hidden = true;
+    $("#feedback").textContent = "回答を入力して「答え合わせ」を押す。";
     state.answered = false;
     state.manualJudgePending = false;
     setTimeout(() => $("#answerInput").focus(), 0);
@@ -1292,10 +1228,10 @@
     $("#answerInput").disabled = true;
     $("#checkBtn").hidden = true;
     $("#showAnswerBtn").hidden = true;
+    $("#skipBtn").hidden = true;
     $("#manualJudgeRow").hidden = true;
     $("#quizNextRow").hidden = false;
     updateNextActionButton();
-    $("#feedback").hidden = false;
     $("#feedback").className = `feedback ${result}`;
     $("#feedback").innerHTML = message;
     $("#nextBtn").focus();
@@ -1329,11 +1265,11 @@
     $("#answerInput").disabled = true;
     $("#checkBtn").hidden = true;
     $("#showAnswerBtn").hidden = true;
+    $("#skipBtn").hidden = true;
     $("#quizNextRow").hidden = true;
     $("#manualJudgeRow").hidden = false;
     $("#markCorrectBtn").disabled = false;
     $("#markWrongBtn").disabled = false;
-    $("#feedback").hidden = false;
     $("#feedback").className = "feedback";
     $("#feedback").innerHTML =
       `<strong>自動では判定できない。</strong><br>` +
@@ -1369,7 +1305,6 @@
 
     const input = $("#answerInput").value.trim();
     if (!input) {
-      $("#feedback").hidden = false;
       $("#feedback").className = "feedback wrong";
       $("#feedback").textContent = "回答が未入力だ。";
       return;
@@ -1398,6 +1333,10 @@
     scheduleReview(word);
     saveData();
     finishAnswer("wrong", `${resultStatusMarkup("wrong", "答えを表示したため不正解として記録")}${correctAnswerMarkup(expected, "模範解答：", state.currentDirection === "ja-en" ? expected : "")}`);
+  }
+
+  function skipQuestion() {
+    if (!state.answered) chooseNextQuestion();
   }
 
   function recordAnswerHistory(result) {
@@ -1518,7 +1457,6 @@
     renderNotificationSettings();
     renderAnalysis();
     updateBackupReminder();
-    if ($("#quizSetupView") && !$("#quizSetupView").hidden) updateQuizSetupAvailability();
   }
 
   function downloadFile(filename, content, mime) {
@@ -1979,37 +1917,39 @@
     });
 
     $("#startTodayBtn").addEventListener("click", () => {
-      $("#quizDirection").value = $("#todayQuizDirection").value;
-      switchTab("quiz", { quizMode: "today", autoStart: true });
+      state.quizRangeOverride = "today";
+      resetQuizSession();
+      switchTab("quiz");
+      prepareQuiz(true);
     });
-    $("#startQuizBtn").addEventListener("click", startQuizFromSetup);
 
     $("#quizEmptyAction").addEventListener("click", () => {
       if ($("#quizEmptyAction").dataset.action === "restart") {
         resetQuizSession();
-        showQuizPlayView();
-        startQuizSession();
+        prepareQuiz(true);
       } else {
         switchTab("add");
       }
     });
 
     $("#quizDirection").addEventListener("change", () => {
-      $("#todayQuizDirection").value = $("#quizDirection").value;
-      updateQuizSetupAvailability();
-    });
-    $("#todayQuizDirection").addEventListener("change", () => {
-      $("#quizDirection").value = $("#todayQuizDirection").value;
+      resetQuizSession();
+      prepareQuiz(true);
     });
     $("#quizRange").addEventListener("change", () => {
       state.quizRangeOverride = null;
+      resetQuizSession();
       updateQuizCountControl();
-      updateQuizSetupAvailability();
+      prepareQuiz(true);
     });
-    $("#quizOrder").addEventListener("change", updateQuizSetupAvailability);
+    $("#quizOrder").addEventListener("change", () => {
+      resetQuizSession();
+      prepareQuiz(true);
+    });
     $("#quizCount").addEventListener("change", () => {
       updateQuizCountControl();
-      updateQuizSetupAvailability();
+      resetQuizSession();
+      prepareQuiz(true);
     });
     $("#checkBtn").addEventListener("click", checkAnswer);
     $("#manualJudgeRow").addEventListener("click", (event) => {
@@ -2019,6 +1959,7 @@
       if (button.id === "markWrongBtn") resolveManualJudgement(false);
     });
     $("#showAnswerBtn").addEventListener("click", revealAnswer);
+    $("#skipBtn").addEventListener("click", skipQuestion);
     $("#nextBtn").addEventListener("click", () => chooseNextQuestion());
     $("#answerInput").addEventListener("keydown", (event) => {
       if (event.key !== "Enter") return;
@@ -2097,6 +2038,7 @@
     $("#retryPersistBtn").addEventListener("click", retryPersist);
     $("#retryPersistBtn2").addEventListener("click", retryPersist);
     $("#installBtn").addEventListener("click", installPwa);
+    $("#openTodayBtn").addEventListener("click", () => $("#startTodayBtn")?.click());
     $("#saveNotificationSettingsBtn").addEventListener("click", saveNotificationSettings);
     $("#disableNotificationsBtn").addEventListener("click", disableNotifications);
     let analysisResizeTimer = null;
@@ -2127,6 +2069,7 @@
     registerServiceWorker();
     await loadData();
     refreshAll();
+    prepareQuiz(true);
     await requestPersistentStorage(false);
     refreshAll();
     startNotificationScheduler();
