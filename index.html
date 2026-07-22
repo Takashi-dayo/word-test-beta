@@ -449,7 +449,7 @@
     .brand-lockup { display: grid; justify-items: center; }
     .topbar h1 {
       margin: 0;
-      font-size: clamp(1.2rem, 5vw, 1.55rem);
+      font-size: clamp(1.44rem, 6vw, 1.86rem);
       line-height: 1.1;
       letter-spacing: -.035em;
       font-weight: 760;
@@ -514,71 +514,104 @@
     .today-hero {
       position: relative;
       min-height: 178px;
-      display: grid;
-      place-items: center;
-      padding: 24px;
+      padding: 18px 20px 20px;
       margin-bottom: 24px;
       color: var(--text);
       text-align: center;
       background:
-        radial-gradient(circle at 86% 12%, rgba(89, 213, 130, .10), transparent 12rem),
-        linear-gradient(145deg, rgba(24, 30, 36, .96), rgba(14, 20, 25, .96));
-      border: 1px solid rgba(255,255,255,.10);
+        radial-gradient(circle at 74% 16%, rgba(40, 111, 79, .12), transparent 13rem),
+        linear-gradient(145deg, rgba(12, 22, 32, .98), rgba(8, 16, 24, .98));
+      border: 1px solid rgba(119, 145, 166, .36);
       border-radius: 20px;
-      box-shadow: inset 0 1px rgba(255,255,255,.04), 0 18px 48px rgba(0,0,0,.30);
+      box-shadow:
+        inset 0 1px rgba(255,255,255,.045),
+        0 18px 48px rgba(0,0,0,.30),
+        0 0 0 1px rgba(33, 65, 91, .10);
       overflow: hidden;
     }
     .today-hero::after { display: none; }
-    .today-hero-content { position: relative; z-index: 3; }
-    .today-label { color: #e8edf2; opacity: 1; font-size: .92rem; letter-spacing: .01em; }
+    .today-card-header {
+      position: relative;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      text-align: left;
+    }
+    .today-card-icon {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      border-radius: 12px;
+      color: #81e29d;
+      background: linear-gradient(145deg, rgba(33, 134, 70, .52), rgba(10, 67, 37, .62));
+      box-shadow: inset 0 1px rgba(255,255,255,.12), 0 9px 20px rgba(28, 172, 76, .14);
+    }
+    .today-card-icon svg { width: 24px; height: 24px; }
+    .today-label {
+      color: #f1f5f8;
+      opacity: 1;
+      font-size: 1.05rem;
+      font-weight: 780;
+      letter-spacing: -.02em;
+    }
+    .today-hero-content {
+      position: relative;
+      z-index: 4;
+      display: grid;
+      justify-items: center;
+      margin-top: -5px;
+    }
     .today-count-line {
       justify-content: center;
       align-items: baseline;
       gap: 10px;
-      margin: 4px 0 0;
+      margin: 0;
     }
-    .today-prefix, .today-unit { font-size: 1.28rem; font-weight: 760; }
+    .today-prefix, .today-unit {
+      color: #f4f6f8;
+      font-size: clamp(1.45rem, 7vw, 2rem);
+      font-weight: 790;
+      letter-spacing: -.04em;
+    }
     .today-number {
-      color: #6bd18b;
-      font-size: clamp(4rem, 18vw, 5.6rem);
-      line-height: .95;
-      font-weight: 820;
-      letter-spacing: -.06em;
-      text-shadow: 0 0 28px rgba(70, 213, 118, .16);
+      color: #64d184;
+      font-size: clamp(4.1rem, 19vw, 5.8rem);
+      line-height: .9;
+      font-weight: 850;
+      letter-spacing: -.07em;
+      text-shadow: 0 0 30px rgba(70, 213, 118, .18);
     }
-    .today-wave {
+    .today-goal {
+      margin-top: 7px;
+      color: #aab3bd;
+      font-size: clamp(.94rem, 4vw, 1.08rem);
+      font-weight: 680;
+      letter-spacing: .015em;
+    }
+    .today-wave-lines {
       position: absolute;
-      z-index: 1;
-      left: -8%;
-      right: -8%;
-      bottom: -62px;
-      height: 132px;
-      border-radius: 50% 48% 0 0;
-      background: linear-gradient(180deg, rgba(52, 181, 98, .28), rgba(27, 97, 55, .10));
-      transform: rotate(-7deg);
-      box-shadow: 0 -1px 0 rgba(104, 231, 146, .18), 0 -20px 45px rgba(45, 187, 94, .06);
+      z-index: 2;
+      left: 0;
+      right: 0;
+      bottom: -1px;
+      width: 100%;
+      height: 50%;
+      pointer-events: none;
+      opacity: .78;
     }
-    .today-wave::before {
-      content: "";
-      position: absolute;
-      inset: -23px -8% auto 9%;
-      height: 92px;
-      border-radius: 50%;
-      background: linear-gradient(180deg, rgba(39, 151, 78, .18), rgba(22, 78, 45, .06));
-      transform: rotate(6deg);
-      border-top: 1px solid rgba(102, 222, 138, .12);
+    .today-wave-lines path {
+      fill: none;
+      vector-effect: non-scaling-stroke;
+      stroke-linecap: round;
     }
-    .today-wave::after {
-      content: "✦  ·  ✦";
-      position: absolute;
-      top: -44px;
-      left: 8%;
-      right: 4%;
-      color: rgba(109, 228, 145, .35);
-      font-size: .76rem;
-      letter-spacing: 8rem;
-      white-space: nowrap;
-    }
+    .today-wave-lines .wave-1 { stroke: rgba(57, 209, 105, .43); stroke-width: 1.35; }
+    .today-wave-lines .wave-2 { stroke: rgba(43, 166, 91, .31); stroke-width: 1.15; }
+    .today-wave-lines .wave-3 { stroke: rgba(65, 223, 119, .20); stroke-width: 1; }
+    .today-wave-lines .wave-4 { stroke: rgba(31, 123, 76, .28); stroke-width: 1.05; }
+    .today-wave-lines .wave-5 { stroke: rgba(71, 190, 111, .14); stroke-width: .9; }
 
     .setting-stack {
       display: grid;
@@ -836,11 +869,20 @@
       </div>
 
       <section class="today-hero">
-        <div class="today-hero-content">
+        <div class="today-card-header">
+          <span class="today-card-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16v15H4zM8 3v4m8-4v4M4 9h16"/><path d="M8 13h3v3H8z"/></svg></span>
           <div class="today-label">今日の単語</div>
+        </div>
+        <div class="today-hero-content">
           <div class="today-count-line"><span class="today-prefix">あと</span><span class="today-number" id="todayReminderCount">0</span><span class="today-unit">個</span></div>
         </div>
-        <div class="today-wave" aria-hidden="true"></div>
+        <svg class="today-wave-lines" viewBox="0 0 520 100" preserveAspectRatio="none" aria-hidden="true">
+          <path class="wave-1" d="M-20 77 C70 19 126 29 196 71 S329 104 405 52 S493 23 548 40"/>
+          <path class="wave-2" d="M-28 88 C60 35 129 38 203 75 S337 103 414 59 S500 36 550 48"/>
+          <path class="wave-3" d="M-22 65 C68 32 119 41 190 72 S320 96 397 62 S488 43 550 61"/>
+          <path class="wave-4" d="M-30 95 C55 48 126 51 205 82 S345 101 425 66 S506 51 552 66"/>
+          <path class="wave-5" d="M-18 54 C67 25 130 38 207 69 S349 92 428 58 S506 42 548 54"/>
+        </svg>
       </section>
 
       <p class="screen-lead">学習条件を選んで開始します</p>
