@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#f5f5f7" />
+  <meta name="theme-color" content="#05080c" />
   <meta name="description" content="端末内保存で使える英単語学習PWA" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <link rel="manifest" href="./manifest.webmanifest?v=6.3" />
-  <link rel="icon" type="image/png" sizes="64x64" href="./icons/icon-64-v3.png?v=6.3" />
-  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon-v3.png?v=6.3" />
-  <title>みんなの単語帳 Beta</title>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="./manifest.webmanifest?v=6.5" />
+  <link rel="icon" type="image/png" sizes="64x64" href="./icons/icon-64-v3.png?v=6.5" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon-v3.png?v=6.5" />
+  <title>みんなの単語帳</title>
   <style>
     :root {
       color-scheme: light;
@@ -226,6 +226,16 @@
     .speak-button { border: 0; border-radius: 11px; padding: 7px 10px; background: rgba(0,122,255,.10); color: var(--blue); font-weight: 700; }
 
     .quiz-toolbar { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 16px; }
+    .quiz-toolbar.today-mode { grid-template-columns: minmax(0, 1fr); max-width: 430px; }
+    .quiz-setup-card { padding: clamp(20px, 5vw, 32px); }
+    .quiz-setup-actions { display: flex; justify-content: flex-end; margin-top: 18px; }
+    .quiz-setup-actions .btn { min-width: min(100%, 220px); }
+    .quiz-setup-notice { margin-top: 14px; }
+    body.quiz-playing .topbar,
+    body.quiz-playing .backup-banner,
+    body.quiz-playing .bottom-backup { display: none !important; }
+    body.quiz-playing .app { padding-top: max(14px, env(safe-area-inset-top)); }
+    body.quiz-playing #panel-quiz.active { min-height: calc(100vh - var(--dock-height) - 86px - env(safe-area-inset-bottom)); }
     .quiz-card { padding: clamp(20px, 5vw, 40px); min-height: 410px; display: grid; align-content: center; text-align: center; }
     .quiz-progress, .question-label { color: var(--muted); font-size: .83rem; font-weight: 700; }
     .question { margin: 10px 0 14px; font-size: clamp(2.5rem, 10vw, 5.4rem); line-height: 1.05; font-weight: 760; overflow-wrap: anywhere; letter-spacing: -.045em; }
@@ -365,14 +375,408 @@
       .word-management-table .word-main-cell { font-size: 1.18rem; padding-bottom: 8px; }
       .word-actions { margin-top: 7px; }
     }
+
+
+    /* v6.5 — reference-based dark iOS redesign */
+    :root {
+      color-scheme: dark;
+      --bg: #05080c;
+      --surface: rgba(20, 26, 32, .88);
+      --surface-solid: #11171d;
+      --surface-soft: #171e25;
+      --text: #f5f7fa;
+      --muted: #9099a4;
+      --line: rgba(255, 255, 255, .10);
+      --blue: #1684ff;
+      --blue-pressed: #0b6fe2;
+      --green: #5fcf83;
+      --red: #ff5e57;
+      --orange: #ffae42;
+      --shadow: 0 18px 50px rgba(0, 0, 0, .30);
+      --shadow-strong: 0 22px 70px rgba(0, 0, 0, .55);
+      --radius-xl: 24px;
+      --radius-lg: 18px;
+      --radius-md: 14px;
+      --dock-height: 74px;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        color-scheme: dark;
+        --bg: #05080c;
+        --surface: rgba(20, 26, 32, .88);
+        --surface-solid: #11171d;
+        --surface-soft: #171e25;
+        --text: #f5f7fa;
+        --muted: #9099a4;
+        --line: rgba(255, 255, 255, .10);
+        --blue: #1684ff;
+        --blue-pressed: #0b6fe2;
+        --green: #5fcf83;
+        --red: #ff5e57;
+        --orange: #ffae42;
+      }
+    }
+
+    html { background: #020407; }
+    body {
+      background:
+        radial-gradient(circle at 50% -8%, rgba(41, 108, 178, .12), transparent 24rem),
+        linear-gradient(180deg, #050a0f 0%, #030609 54%, #020407 100%);
+      min-height: 100dvh;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(255,255,255,.008) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.006) 1px, transparent 1px);
+      background-size: 28px 28px;
+      mask-image: linear-gradient(to bottom, black, transparent 75%);
+    }
+
+    .app {
+      width: min(520px, calc(100% - 24px));
+      padding: max(18px, env(safe-area-inset-top)) 0 calc(var(--dock-height) + 38px + env(safe-area-inset-bottom));
+    }
+    .topbar {
+      position: relative;
+      min-height: 72px;
+      justify-content: center;
+      text-align: center;
+      margin-bottom: 22px;
+    }
+    .brand-lockup { display: grid; justify-items: center; }
+    .topbar h1 {
+      margin: 0;
+      font-size: clamp(1.2rem, 5vw, 1.55rem);
+      line-height: 1.1;
+      letter-spacing: -.035em;
+      font-weight: 760;
+    }
+    .brand-kicker {
+      margin-top: 5px;
+      color: #788390;
+      font-size: .66rem;
+      font-weight: 650;
+      letter-spacing: .16em;
+    }
+    .topbar .icon-button { position: absolute; right: 0; top: 4px; }
+
+    .screen-heading {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      margin: 2px 2px 24px;
+    }
+    .screen-heading h2 {
+      margin: 0;
+      font-size: clamp(1.6rem, 7vw, 2.05rem);
+      letter-spacing: -.04em;
+      font-weight: 790;
+    }
+    .screen-icon, .setting-icon {
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+    }
+    .screen-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+    }
+    .screen-icon svg { width: 24px; height: 24px; }
+    .quiz-heading .screen-icon {
+      color: #55a7ff;
+      background: linear-gradient(145deg, rgba(28, 111, 220, .36), rgba(14, 55, 111, .44));
+      box-shadow: inset 0 1px rgba(255,255,255,.12), 0 10px 24px rgba(0,104,255,.12);
+    }
+    .today-heading .screen-icon {
+      color: #86e5a2;
+      background: linear-gradient(145deg, rgba(49, 145, 80, .36), rgba(17, 78, 43, .46));
+      box-shadow: inset 0 1px rgba(255,255,255,.12), 0 10px 24px rgba(53,199,89,.10);
+    }
+    .screen-lead {
+      margin: 0 2px 13px;
+      color: #a4adb7;
+      font-size: .96rem;
+    }
+
+    .glass-card, .card, .stat-card, .quiz-card, .status-card, .privacy-box, .notification-settings, .registration-warning, .analysis-card,
+    .today-guide, .setting-card {
+      background: linear-gradient(145deg, rgba(25, 31, 38, .90), rgba(15, 20, 26, .92));
+      border: 1px solid rgba(255,255,255,.09);
+      box-shadow: inset 0 1px rgba(255,255,255,.035), 0 16px 45px rgba(0,0,0,.24);
+      backdrop-filter: blur(24px) saturate(130%);
+      -webkit-backdrop-filter: blur(24px) saturate(130%);
+    }
+
+    .today-hero {
+      position: relative;
+      min-height: 178px;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      margin-bottom: 24px;
+      color: var(--text);
+      text-align: center;
+      background:
+        radial-gradient(circle at 86% 12%, rgba(89, 213, 130, .10), transparent 12rem),
+        linear-gradient(145deg, rgba(24, 30, 36, .96), rgba(14, 20, 25, .96));
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 20px;
+      box-shadow: inset 0 1px rgba(255,255,255,.04), 0 18px 48px rgba(0,0,0,.30);
+      overflow: hidden;
+    }
+    .today-hero::after { display: none; }
+    .today-hero-content { position: relative; z-index: 3; }
+    .today-label { color: #e8edf2; opacity: 1; font-size: .92rem; letter-spacing: .01em; }
+    .today-count-line {
+      justify-content: center;
+      align-items: baseline;
+      gap: 10px;
+      margin: 4px 0 0;
+    }
+    .today-prefix, .today-unit { font-size: 1.28rem; font-weight: 760; }
+    .today-number {
+      color: #6bd18b;
+      font-size: clamp(4rem, 18vw, 5.6rem);
+      line-height: .95;
+      font-weight: 820;
+      letter-spacing: -.06em;
+      text-shadow: 0 0 28px rgba(70, 213, 118, .16);
+    }
+    .today-wave {
+      position: absolute;
+      z-index: 1;
+      left: -8%;
+      right: -8%;
+      bottom: -62px;
+      height: 132px;
+      border-radius: 50% 48% 0 0;
+      background: linear-gradient(180deg, rgba(52, 181, 98, .28), rgba(27, 97, 55, .10));
+      transform: rotate(-7deg);
+      box-shadow: 0 -1px 0 rgba(104, 231, 146, .18), 0 -20px 45px rgba(45, 187, 94, .06);
+    }
+    .today-wave::before {
+      content: "";
+      position: absolute;
+      inset: -23px -8% auto 9%;
+      height: 92px;
+      border-radius: 50%;
+      background: linear-gradient(180deg, rgba(39, 151, 78, .18), rgba(22, 78, 45, .06));
+      transform: rotate(6deg);
+      border-top: 1px solid rgba(102, 222, 138, .12);
+    }
+    .today-wave::after {
+      content: "✦  ·  ✦";
+      position: absolute;
+      top: -44px;
+      left: 8%;
+      right: 4%;
+      color: rgba(109, 228, 145, .35);
+      font-size: .76rem;
+      letter-spacing: 8rem;
+      white-space: nowrap;
+    }
+
+    .setting-stack {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin: 0 0 18px;
+      max-width: none;
+    }
+    .setting-card {
+      min-height: 92px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px;
+      border-radius: 18px;
+    }
+    .setting-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 13px;
+      color: #74b9ff;
+      background: linear-gradient(145deg, rgba(34, 104, 202, .35), rgba(18, 53, 108, .50));
+      box-shadow: inset 0 1px rgba(255,255,255,.10);
+    }
+    .setting-icon svg { width: 24px; height: 24px; }
+    .today-setting-card .setting-icon {
+      color: #8de4a5;
+      background: linear-gradient(145deg, rgba(49, 145, 80, .36), rgba(17, 78, 43, .50));
+    }
+    .setting-control { flex: 1; min-width: 0; }
+    .setting-control label {
+      margin: 0 0 5px;
+      color: #a6afb9;
+      font-size: .78rem;
+      font-weight: 650;
+    }
+    .setting-control select {
+      height: 46px;
+      padding: 0 38px 0 12px;
+      color: #f6f8fa;
+      background: rgba(8, 12, 16, .45);
+      border: 1px solid rgba(255,255,255,.13);
+      border-radius: 12px;
+      box-shadow: inset 0 1px 4px rgba(0,0,0,.22);
+    }
+    .setting-control select:focus { border-color: rgba(58,151,255,.75); box-shadow: 0 0 0 3px rgba(22,132,255,.14); }
+    .today-setting-card .setting-control select:focus { border-color: rgba(95,207,131,.75); box-shadow: 0 0 0 3px rgba(95,207,131,.13); }
+
+    .launch-button {
+      width: 100%;
+      min-height: 62px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin: 8px 0 24px;
+      border-radius: 15px;
+      font-size: 1.03rem;
+      font-weight: 780;
+      box-shadow: 0 15px 34px rgba(0, 104, 255, .20), inset 0 1px rgba(255,255,255,.18);
+    }
+    .btn.primary.quiz-launch { background: linear-gradient(180deg, #248cff, #0868df); }
+    .btn.primary.today-launch {
+      background: linear-gradient(180deg, #67d68b, #42af67);
+      box-shadow: 0 15px 34px rgba(47, 184, 92, .18), inset 0 1px rgba(255,255,255,.20);
+    }
+    .launch-icon {
+      width: 21px;
+      height: 21px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: currentColor;
+      background: rgba(255,255,255,.90);
+      font-size: .58rem;
+      padding-left: 1px;
+    }
+    .quiz-launch .launch-icon { color: #147cf1; }
+    .today-launch .launch-icon { color: #42ad66; }
+
+    .quiz-toolbar.today-mode { max-width: none; }
+    .quiz-setup-card, .quiz-setup-actions { display: contents; }
+    .quiz-setup-actions .btn { min-width: 0; }
+    #quizCountGroup { display: none !important; }
+
+    body.quiz-playing .topbar { display: flex !important; }
+    body.quiz-playing .app { padding-top: max(18px, env(safe-area-inset-top)); }
+    body.quiz-playing #panel-quiz.active { min-height: 0; }
+    body.quiz-playing #quizSetupView { display: none !important; }
+    .quiz-card {
+      position: relative;
+      min-height: 500px;
+      padding: clamp(25px, 7vw, 42px) clamp(18px, 5vw, 30px);
+      border-radius: 22px;
+      background:
+        radial-gradient(circle at 50% 12%, rgba(30, 132, 255, .09), transparent 15rem),
+        linear-gradient(145deg, rgba(23, 30, 37, .97), rgba(12, 17, 22, .97));
+      border: 1px solid rgba(40, 144, 255, .64);
+      box-shadow: inset 0 1px rgba(255,255,255,.05), 0 0 0 1px rgba(13,101,210,.12), 0 0 24px rgba(23,126,255,.28), 0 22px 58px rgba(0,0,0,.35);
+    }
+    body[data-accent="today"] .quiz-card {
+      background:
+        radial-gradient(circle at 50% 12%, rgba(78, 199, 116, .09), transparent 15rem),
+        linear-gradient(145deg, rgba(23, 31, 28, .97), rgba(12, 18, 15, .97));
+      border-color: rgba(85, 211, 125, .68);
+      box-shadow: inset 0 1px rgba(255,255,255,.05), 0 0 0 1px rgba(42,133,72,.12), 0 0 24px rgba(69,199,108,.26), 0 22px 58px rgba(0,0,0,.35);
+    }
+    .quiz-progress { color: #b6bec7; font-size: .9rem; }
+    .question-label { margin-top: 6px; color: #d9dee4; font-size: .9rem; }
+    .question {
+      margin: 30px 0 42px;
+      font-size: clamp(3.2rem, 17vw, 5.3rem);
+      font-weight: 820;
+      letter-spacing: -.055em;
+      text-shadow: 0 5px 18px rgba(0,0,0,.35);
+    }
+    .quiz-answer { margin-top: 0; }
+    .quiz-answer > label[for="answerInput"] { color: #c3cad2; font-size: .85rem; }
+    #answerInput {
+      min-height: 58px;
+      background: rgba(4, 8, 12, .55);
+      border: 1px solid rgba(255,255,255,.15);
+      border-radius: 13px;
+      font-size: 1rem;
+    }
+    #answerInput:focus { border-color: rgba(42,144,255,.85); box-shadow: 0 0 0 3px rgba(22,132,255,.15); }
+    body[data-accent="today"] #answerInput:focus { border-color: rgba(95,207,131,.85); box-shadow: 0 0 0 3px rgba(95,207,131,.14); }
+    .inline-check { margin: 18px 0 20px; }
+    .quiz-answer .button-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 0; }
+    .quiz-answer .button-row .btn { min-height: 58px; border-radius: 13px; }
+    body[data-accent="today"] #checkBtn { background: linear-gradient(180deg, #64d389, #3eaa63); }
+    #showAnswerBtn { background: rgba(18,24,30,.80); border-color: rgba(255,255,255,.12); }
+    .feedback { min-height: 0; background: rgba(5,9,13,.48); }
+    .correct-answer-card { background: rgba(8,12,16,.78); }
+
+    .today-guide {
+      margin-top: 12px;
+      margin-bottom: 0;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    .today-guide summary { min-height: 54px; padding: 13px 16px; color: #bcc4cc; }
+    .today-heading + .today-hero + .screen-lead + .today-setting-card + .today-launch + .today-guide summary { color: #b9c2ca; }
+    .today-guide[open] summary { color: #dce2e7; }
+    .today-guide p { color: #909aa4; }
+    .today-data-body { padding: 0 14px 16px; }
+    .today-data-guide .summary { margin: 0 0 14px; }
+    .today-list-section { padding-top: 4px; }
+
+    input, select, textarea { background: #151c23; border-color: rgba(255,255,255,.08); }
+    input:focus, select:focus, textarea:focus { border-color: var(--blue); }
+    .choice-card { background: linear-gradient(145deg, #161d24, #0f141a); }
+    .table-wrap { background: #0f151b; }
+    th { background: #171e25; }
+    .settings-sheet, .dialog-inner { background: #0d1319; }
+
+    .bottom-dock {
+      width: min(510px, calc(100% - 16px));
+      min-height: var(--dock-height);
+      padding: 6px;
+      background: rgba(18, 24, 30, .84);
+      border-color: rgba(255,255,255,.11);
+      border-radius: 22px;
+      box-shadow: 0 18px 48px rgba(0,0,0,.52), inset 0 1px rgba(255,255,255,.045);
+    }
+    .settings-launch, .tab { border-radius: 14px; color: #87919c; }
+    .settings-launch svg, .tab svg { width: 22px; height: 22px; }
+    .tab.active { color: #4ea8ff; background: linear-gradient(180deg, rgba(33,115,220,.28), rgba(18,62,121,.22)); }
+    body[data-accent="today"] .tab[data-tab="today"].active {
+      color: #65d488;
+      background: linear-gradient(180deg, rgba(51,145,82,.28), rgba(22,76,42,.24));
+    }
+    .settings-launch span, .tab span { font-size: .59rem; }
+
+    @media (max-width: 760px) {
+      .app { width: min(100% - 22px, 520px); }
+      .topbar { margin-bottom: 16px; }
+      .screen-heading { margin-bottom: 21px; }
+      .quiz-toolbar { grid-template-columns: 1fr; }
+      .setting-card { min-height: 88px; }
+      .quiz-card { min-height: min(520px, calc(100dvh - 190px)); }
+      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .bottom-dock { bottom: max(7px, env(safe-area-inset-bottom)); }
+    }
+
+    @media (min-width: 780px) {
+      .app { width: min(620px, calc(100% - 40px)); }
+      .bottom-dock { width: min(610px, calc(100% - 28px)); }
+    }
+
   </style>
 </head>
 <body>
   <main class="app">
     <header class="topbar">
-      <div>
-        <div class="brand-kicker">MY VOCABULARY</div>
+      <div class="brand-lockup">
         <h1>みんなの単語帳</h1>
+        <div class="brand-kicker">MY VOCABULARY</div>
       </div>
       <button class="icon-button" id="installBtn" type="button" hidden aria-label="アプリをインストール">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M5 15v4h14v-4"/></svg>
@@ -385,52 +789,92 @@
     </section>
 
     <section class="panel active" id="panel-today">
-      <div class="today-hero">
-        <div class="today-label">今日の単語</div>
-        <div class="today-count-line"><span class="today-number" id="todayReminderCount">あと0個</span></div>
-        <button class="btn" id="openTodayBtn" type="button">学習開始</button>
+      <div class="screen-heading today-heading">
+        <span class="screen-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16v15H4zM8 3v4m8-4v4M4 9h16"/><path d="M8 13h3v3H8z"/></svg></span>
+        <h2>今日</h2>
       </div>
+
+      <section class="today-hero">
+        <div class="today-hero-content">
+          <div class="today-label">今日の単語</div>
+          <div class="today-count-line"><span class="today-prefix">あと</span><span class="today-number" id="todayReminderCount">0</span><span class="today-unit">個</span></div>
+        </div>
+        <div class="today-wave" aria-hidden="true"></div>
+      </section>
+
+      <p class="screen-lead">学習条件を選んで開始します</p>
+      <section class="setting-card today-setting-card">
+        <span class="setting-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h13m-5-5 5 5-5 5"/></svg></span>
+        <div class="setting-control">
+          <label for="todayQuizDirection">出題方向</label>
+          <select id="todayQuizDirection"><option value="en-ja">英語 → 日本語</option><option value="ja-en">日本語 → 英語</option><option value="random">ランダム</option></select>
+        </div>
+      </section>
+      <button class="btn primary launch-button today-launch" type="button" id="startTodayBtn"><span>学習開始</span><span class="launch-icon" aria-hidden="true">▶</span></button>
 
       <details class="today-guide">
         <summary>今日の単語について</summary>
         <p>まだ一度も解いていない問題と、間違えた日から1日後・4日後・7日後・14日後・30日後の単語を表示する。期限を過ぎても、正解するまで今日の単語に残る。</p>
       </details>
 
-      <section class="summary" aria-label="学習状況">
-        <div class="stat-card"><div class="stat-label">登録単語</div><div class="stat-value" id="statWords">0</div></div>
-        <div class="stat-card"><div class="stat-label">総回答数</div><div class="stat-value" id="statAnswers">0</div></div>
-        <div class="stat-card"><div class="stat-label">正解数</div><div class="stat-value" id="statCorrect">0</div></div>
-        <div class="stat-card"><div class="stat-label">正答率</div><div class="stat-value" id="statRate">—</div></div>
-        <div class="stat-card" hidden><div class="stat-label">今日の単語</div><div class="stat-value" id="statToday">0</div></div>
-      </section>
-
-      <section class="card section-card">
-        <div class="section-header"><div><h2 style="margin-bottom:4px">今日の学習</h2><p class="muted" id="todayMessage">今日の学習対象はない。</p></div><div class="stat-value" id="todayCount">0</div></div>
-        <button class="btn primary" type="button" id="startTodayBtn">学習開始</button>
-        <div style="margin-top:18px" id="todayTable"></div>
-      </section>
+      <details class="today-guide today-data-guide">
+        <summary>学習状況と対象単語</summary>
+        <div class="today-data-body">
+          <section class="summary" aria-label="学習状況">
+            <div class="stat-card"><div class="stat-label">登録単語</div><div class="stat-value" id="statWords">0</div></div>
+            <div class="stat-card"><div class="stat-label">総回答数</div><div class="stat-value" id="statAnswers">0</div></div>
+            <div class="stat-card"><div class="stat-label">正解数</div><div class="stat-value" id="statCorrect">0</div></div>
+            <div class="stat-card"><div class="stat-label">正答率</div><div class="stat-value" id="statRate">—</div></div>
+            <div class="stat-card" hidden><div class="stat-label">今日の単語</div><div class="stat-value" id="statToday">0</div></div>
+          </section>
+          <section class="today-list-section">
+            <div class="section-header"><div><h3>今日の学習</h3><p class="muted" id="todayMessage">今日の学習対象はない。</p></div><div class="stat-value" id="todayCount">0</div></div>
+            <div id="todayTable"></div>
+          </section>
+        </div>
+      </details>
     </section>
 
     <section class="panel" id="panel-quiz">
-      <h2>問題</h2>
-      <div class="quiz-toolbar">
-        <div><label for="quizDirection">出題方向</label><select id="quizDirection"><option value="en-ja">英語 → 日本語</option><option value="ja-en">日本語 → 英語</option><option value="random">ランダム</option></select></div>
-        <div><label for="quizRange">出題範囲</label><select id="quizRange"><option value="all">すべての単語</option><option value="mistakes">間違えた単語のみ</option><option value="unanswered">未回答の単語のみ</option></select></div>
-        <div><label for="quizOrder">出題順</label><select id="quizOrder"><option value="random">ランダム</option><option value="mistakes-desc">誤答回数が多い順</option><option value="newest">新しい順</option></select></div>
-        <div id="quizCountGroup"><label for="quizCount">問題数</label><input id="quizCount" type="number" min="1" value="10" inputmode="numeric" /></div>
+      <div id="quizSetupView">
+        <div class="screen-heading quiz-heading">
+          <span class="screen-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 4h10a2 2 0 0 1 2 2v14l-7-3-7 3V6a2 2 0 0 1 2-2Z"/><path d="M9 8h6m-6 4h4"/></svg></span>
+          <h2 id="quizSetupTitle">問題</h2>
+        </div>
+        <p class="screen-lead" id="quizSetupLead">条件を選んで問題を開始します</p>
+        <section class="quiz-toolbar setting-stack" id="quizToolbar">
+          <div class="setting-card">
+            <span class="setting-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h13m-5-5 5 5-5 5"/></svg></span>
+            <div class="setting-control"><label for="quizDirection">出題方向</label><select id="quizDirection"><option value="en-ja">英語 → 日本語</option><option value="ja-en">日本語 → 英語</option><option value="random">ランダム</option></select></div>
+          </div>
+          <div class="setting-card" id="quizRangeGroup">
+            <span class="setting-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 4h12v16H6z"/><path d="M9 8h6m-6 4h6m-6 4h4"/></svg></span>
+            <div class="setting-control"><label for="quizRange">出題範囲</label><select id="quizRange"><option value="all">すべての単語</option><option value="mistakes">間違えた単語のみ</option><option value="unanswered">未回答の単語のみ</option></select></div>
+          </div>
+          <div class="setting-card" id="quizOrderGroup">
+            <span class="setting-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 7h10l-3-3m3 3-3 3M16 17H6l3 3m-3-3 3-3"/></svg></span>
+            <div class="setting-control"><label for="quizOrder">出題順</label><select id="quizOrder"><option value="random">ランダム</option><option value="mistakes-desc">誤答回数が多い順</option><option value="newest">新しい順</option></select></div>
+          </div>
+          <div id="quizCountGroup" hidden><label for="quizCount">問題数</label><input id="quizCount" type="number" min="1" value="10" inputmode="numeric" /></div>
+        </section>
+        <button class="btn primary launch-button quiz-launch" type="button" id="startQuizBtn"><span>問題開始</span><span class="launch-icon" aria-hidden="true">▶</span></button>
+        <div class="quiz-setup-notice" id="quizSetupNotice" hidden aria-live="polite"></div>
       </div>
-      <div class="quiz-card" id="quizCard">
-        <div id="quizEmpty"><p class="empty">単語を登録すると問題を開始できる。</p><button class="btn primary" type="button" id="quizEmptyAction">単語を登録する</button></div>
-        <div id="quizContent" hidden>
-          <div class="quiz-progress" id="quizProgress"></div><div class="question-label" id="questionLabel">日本語訳を入力</div><div class="question" id="questionText"></div>
-          <button class="speak-button question-speak" type="button" id="speakQuestionBtn" hidden>発音を聞く</button>
-          <div class="quiz-answer">
-            <label for="answerInput">回答</label><input id="answerInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="答えを入力" />
-            <label class="inline-check"><input type="checkbox" id="strictAnswer" />完全一致で判定する</label>
-            <div class="button-row"><button class="btn primary" type="button" id="checkBtn">答え合わせ</button><button class="btn ghost" type="button" id="skipBtn">スキップ</button><button class="btn ghost" type="button" id="showAnswerBtn">答えを見る</button></div>
-            <div class="feedback" id="feedback" aria-live="polite">回答を入力して「答え合わせ」を押す。</div>
-            <div class="manual-judge-panel" id="manualJudgeRow" hidden><div class="manual-judge-title">この回答をどう記録するか選択</div><div class="manual-judge-actions"><button class="btn approve" type="button" id="markCorrectBtn">正解として扱う</button><button class="btn reject" type="button" id="markWrongBtn">不正解として記録</button></div></div>
-            <div class="quiz-next-row" id="quizNextRow" hidden><button class="btn next-small" type="button" id="nextBtn">次の問題へ</button></div>
+
+      <div id="quizPlayView" hidden>
+        <div class="quiz-card" id="quizCard">
+          <div id="quizEmpty"><p class="empty">単語を登録すると問題を開始できる。</p><button class="btn primary" type="button" id="quizEmptyAction">単語を登録する</button></div>
+          <div id="quizContent" hidden>
+            <div class="quiz-progress" id="quizProgress"></div><div class="question-label" id="questionLabel">日本語訳を入力</div><div class="question" id="questionText"></div>
+            <button class="speak-button question-speak" type="button" id="speakQuestionBtn" hidden>発音を聞く</button>
+            <div class="quiz-answer">
+              <label for="answerInput">回答</label><input id="answerInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="答えを入力" />
+              <label class="inline-check"><input type="checkbox" id="strictAnswer" />完全一致で判定する</label>
+              <div class="button-row"><button class="btn primary" type="button" id="checkBtn">答え合わせ</button><button class="btn ghost" type="button" id="showAnswerBtn">答えを見る</button></div>
+              <div class="feedback" id="feedback" aria-live="polite" hidden></div>
+              <div class="manual-judge-panel" id="manualJudgeRow" hidden><div class="manual-judge-title">この回答をどう記録するか選択</div><div class="manual-judge-actions"><button class="btn approve" type="button" id="markCorrectBtn">正解として扱う</button><button class="btn reject" type="button" id="markWrongBtn">不正解として記録</button></div></div>
+              <div class="quiz-next-row" id="quizNextRow" hidden><button class="btn next-small" type="button" id="nextBtn">次の問題へ</button></div>
+            </div>
           </div>
         </div>
       </div>
@@ -547,7 +991,7 @@
 
   <dialog id="editDialog"><form method="dialog" class="dialog-inner" id="editForm"><h2>単語を編集</h2><input type="hidden" id="editId" /><div class="grid"><div><label for="editEnglish">英語</label><input id="editEnglish" autocapitalize="none" spellcheck="true" required /></div><div><label for="editJapanese">日本語訳</label><input id="editJapanese" required /></div></div><div class="button-row"><button class="btn primary" value="save" type="submit">保存</button><button class="btn ghost" value="cancel" type="button" id="cancelEditBtn">キャンセル</button></div></form></dialog>
 
-  <script src="./spell-dictionary.js?v=6.2" defer></script>
-  <script src="./app.js?v=6.3" defer></script>
+  <script src="./spell-dictionary.js?v=6.5" defer></script>
+  <script src="./app.js?v=6.5" defer></script>
 </body>
 </html>
