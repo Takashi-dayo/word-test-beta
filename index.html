@@ -8,9 +8,9 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="manifest" href="./manifest.webmanifest?v=7.3" />
-  <link rel="icon" type="image/png" sizes="64x64" href="./icons/icon-64.png?v=7.3" />
-  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png?v=7.3" />
+  <link rel="manifest" href="./manifest.webmanifest?v=7.4" />
+  <link rel="icon" type="image/png" sizes="64x64" href="./icons/icon-64.png?v=7.4" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png?v=7.4" />
   <title>Beta みんなの単語帳 Beta</title>
   <style>
     :root {
@@ -232,6 +232,27 @@
     .quiz-setup-actions { display: flex; justify-content: flex-end; margin-top: 18px; }
     .quiz-setup-actions .btn { min-width: min(100%, 220px); }
     .quiz-setup-notice { margin-top: 14px; }
+
+    .foresta-mode-button {
+      width: 100%;
+      min-height: 58px;
+      margin-top: 20px;
+      border: 1px solid rgba(255, 255, 90, .24);
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(75, 75, 17, .92), rgba(42, 42, 10, .96));
+      color: #ffffea;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-size: 1.02rem;
+      font-weight: 760;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 12px 28px rgba(0,0,0,.18);
+    }
+    .foresta-mode-button:active { transform: scale(.985); }
+    .foresta-mode-button svg { width: 21px; height: 21px; color: #ffff62; }
+    .foresta-back { margin-bottom: 20px; }
+    .foresta-description { margin-top: -4px; margin-bottom: 18px; }
     body.quiz-playing .topbar,
     body.quiz-playing .backup-banner,
     body.quiz-playing .bottom-backup { display: none !important; }
@@ -997,6 +1018,7 @@
 
     <section class="panel" id="panel-quiz">
       <div id="quizSetupView">
+        <button class="back-link foresta-back" type="button" id="exitForestaModeBtn" hidden>‹ 通常の問題へ戻る</button>
         <div class="screen-heading quiz-heading">
           <span class="screen-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 4h10a2 2 0 0 1 2 2v14l-7-3-7 3V6a2 2 0 0 1 2-2Z"/><path d="M9 8h6m-6 4h4"/></svg></span>
           <h2 id="quizSetupTitle">問題</h2>
@@ -1011,6 +1033,10 @@
             <span class="setting-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 4h12v16H6z"/><path d="M9 8h6m-6 4h6m-6 4h4"/></svg></span>
             <div class="setting-control"><label for="quizRange">出題範囲</label><select id="quizRange"><option value="all">すべての単語</option><option value="mistakes">間違えた単語のみ</option><option value="unanswered">未回答の単語のみ</option></select></div>
           </div>
+          <div class="setting-card" id="forestaLevelGroup" hidden>
+            <span class="setting-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 5h14v14H5z"/><path d="M8 9h8M8 13h5M8 17h3"/></svg></span>
+            <div class="setting-control"><label for="forestaLevel">級・段</label><select id="forestaLevel" aria-label="フォレスタモードの級・段"></select></div>
+          </div>
           <div class="setting-card" id="quizOrderGroup">
             <span class="setting-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 7h10l-3-3m3 3-3 3M16 17H6l3 3m-3-3 3-3"/></svg></span>
             <div class="setting-control"><label for="quizOrder">出題順</label><select id="quizOrder"><option value="random">ランダム</option><option value="mistakes-desc">誤答回数が多い順</option><option value="newest">新しい順</option></select></div>
@@ -1022,6 +1048,10 @@
         </section>
         <button class="btn primary launch-button quiz-launch" type="button" id="startQuizBtn"><span>問題開始</span><span class="launch-icon" aria-hidden="true">▶</span></button>
         <div class="quiz-setup-notice" id="quizSetupNotice" hidden aria-live="polite"></div>
+        <button class="foresta-mode-button" type="button" id="forestaModeBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 19h16M6 17V7l6-3 6 3v10"/><path d="M9 10h6M9 13h6"/></svg>
+          <span>フォレスタモード</span>
+        </button>
       </div>
 
       <div id="quizPlayView" hidden>
@@ -1154,8 +1184,9 @@
 
   <dialog id="editDialog"><form method="dialog" class="dialog-inner" id="editForm"><h2>単語を編集</h2><input type="hidden" id="editId" /><div class="grid"><div><label for="editEnglish">英語</label><input id="editEnglish" autocapitalize="none" spellcheck="true" required /></div><div><label for="editJapanese">日本語訳</label><input id="editJapanese" required /></div></div><div class="button-row"><button class="btn primary" value="save" type="submit">保存</button><button class="btn ghost" value="cancel" type="button" id="cancelEditBtn">キャンセル</button></div></form></dialog>
 
-  <script src="./spell-dictionary.js?v=7.3" defer></script>
-  <script src="./app.js?v=7.3" defer></script>
+  <script src="./spell-dictionary.js?v=7.4" defer></script>
+  <script src="./foresta-questions.js?v=7.4" defer></script>
+  <script src="./app.js?v=7.4" defer></script>
   <script>
     window.addEventListener("load", () => {
       const input = document.getElementById("quizCount");

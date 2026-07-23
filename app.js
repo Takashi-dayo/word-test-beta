@@ -12,6 +12,33 @@
   const BACKUP_SNOOZE_DAYS = 7;
   const NOTIFICATION_CHECK_INTERVAL_MS = 30000;
 
+  const FORESTA_LEVEL_OPTIONS = Object.freeze([
+    ...Array.from({ length: 20 }, (_, index) => {
+      const level = 20 - index;
+      return { value: `kyu-${level}`, label: `${level}級` };
+    }),
+    ...Array.from({ length: 15 }, (_, index) => {
+      const level = index + 1;
+      return { value: `dan-${level}`, label: level === 1 ? "初段" : `${level}段` };
+    })
+  ]);
+
+  const FORESTA_SOURCE_QUESTIONS = Object.freeze(
+    (Array.isArray(window.FORESTA_QUESTIONS) ? window.FORESTA_QUESTIONS : [])
+      .map((item, index) => ({
+        id: String(item?.id || `foresta-${index + 1}`),
+        level: String(item?.level || ""),
+        english: String(item?.english || "").trim(),
+        japanese: String(item?.japanese || "").trim(),
+        correct: 0,
+        mistakes: 0,
+        mistakeHistory: [],
+        reviewDates: [],
+        createdAt: Number.isFinite(item?.createdAt) ? item.createdAt : index
+      }))
+      .filter((item) => item.level && item.english && item.japanese)
+  );
+
   let database = null;
   let saveQueue = Promise.resolve();
   let deferredInstallPrompt = null;
@@ -30,6 +57,7 @@
     manualJudgePending: false,
     quizRangeOverride: null,
     quizSetupMode: "standard",
+    forestaSessionWords: [],
     pendingRegistration: null,
     pendingBulkSpellWarnings: []
   };
@@ -996,22 +1024,55 @@
       </div>`;
   }
 
+  function isForestaMode() {
+    return state.quizSetupMode === "foresta";
+  }
+
+  function createForestaSessionWords() {
+    return FORESTA_SOURCE_QUESTIONS.map((word) => ({
+      ...word,
+      mistakeHistory: [],
+      reviewDates: []
+    }));
+  }
+
+  function activeQuizWords() {
+    return isForestaMode() ? state.forestaSessionWords : state.words;
+  }
+
+  function populateForestaLevelOptions() {
+    const select = $("#forestaLevel");
+    if (!select || select.options.length) return;
+    select.innerHTML = FORESTA_LEVEL_OPTIONS
+      .map((option) => `<option value="${escapeHtml(option.value)}">${escapeHtml(option.label)}</option>`)
+      .join("");
+  }
+
   function showQuizSetup(mode = "standard") {
     const todayMode = mode === "today";
-    state.quizSetupMode = todayMode ? "today" : "standard";
+    const forestaMode = mode === "foresta";
+    state.quizSetupMode = todayMode ? "today" : (forestaMode ? "foresta" : "standard");
     state.quizRangeOverride = todayMode ? "today" : null;
+    state.forestaSessionWords = forestaMode ? createForestaSessionWords() : [];
     resetQuizSession();
 
     document.body.classList.remove("quiz-playing");
     $("#quizSetupView").hidden = false;
     $("#quizPlayView").hidden = true;
-    $("#quizSetupTitle").textContent = todayMode ? "今日の単語" : "問題";
+    $("#quizSetupTitle").textContent = todayMode
+      ? "今日の単語"
+      : (forestaMode ? "問題（フォレスタモード）" : "問題");
     $("#quizSetupLead").textContent = todayMode
       ? "出題方向を選択する。"
-      : "出題方向・出題範囲・出題順・問題数を選択する。";
-    $("#quizRangeGroup").hidden = todayMode;
+      : (forestaMode
+        ? "出題方向・級／段・出題順・問題数を選択する。"
+        : "出題方向・出題範囲・出題順・問題数を選択する。");
+    $("#quizRangeGroup").hidden = todayMode || forestaMode;
+    $("#forestaLevelGroup").hidden = !forestaMode;
     $("#quizOrderGroup").hidden = todayMode;
     $("#quizToolbar").classList.toggle("today-mode", todayMode);
+    $("#forestaModeBtn").hidden = todayMode || forestaMode;
+    $("#exitForestaModeBtn").hidden = !forestaMode;
     if (todayMode) $("#quizOrder").value = "random";
 
     updateQuizCountControl();
@@ -1040,6 +1101,12 @@
 
     notice.hidden = false;
     notice.className = "quiz-setup-notice notice error";
+    if (isForestaMode()) {
+      notice.textContent = FORESTA_SOURCE_QUESTIONS.length
+        ? "選択した級・段には問題がまだ追加されていない。"
+        : "フォレスタモードの問題はまだ追加されていない。";
+      return;
+    }
     notice.textContent = state.words.length
       ? "選択した出題範囲に該当する単語がない。"
       : "単語を登録すると問題を開始できる。";
@@ -1057,10 +1124,16 @@
   }
 
   function currentQuizRange() {
+    if (isForestaMode()) return "foresta";
     return state.quizRangeOverride || $("#quizRange").value;
   }
 
   function getFilteredQuizWords(range = currentQuizRange()) {
+    if (isForestaMode() || range === "foresta") {
+      const level = $("#forestaLevel")?.value || FORESTA_LEVEL_OPTIONS[0]?.value || "kyu-20";
+      return state.forestaSessionWords.filter((word) => word.level === level);
+    }
+
     let words = [...state.words];
     if (range === "mistakes") words = words.filter((word) => word.mistakes > 0);
     if (range === "today") words = words.filter(isDueToday);
@@ -1139,7 +1212,9 @@
     $("#quizEmpty .empty").textContent = message;
     const button = $("#quizEmptyAction");
     button.dataset.action = action;
-    button.textContent = action === "restart" ? "同じ条件でもう一度" : "単語を登録する";
+    button.textContent = action === "restart"
+      ? "同じ条件でもう一度"
+      : (action === "setup" ? "条件を選び直す" : "単語を登録する");
   }
 
   function startQuizSession() {
@@ -1152,12 +1227,16 @@
     state.currentQuizWordId = null;
 
     if (!pool.length) {
-      showQuizEmpty(
-        state.words.length
-          ? "選択した出題範囲に該当する単語がない。"
-          : "単語を登録すると問題を開始できる。",
-        "add"
-      );
+      if (isForestaMode()) {
+        showQuizEmpty("選択した級・段には問題がまだ追加されていない。", "setup");
+      } else {
+        showQuizEmpty(
+          state.words.length
+            ? "選択した出題範囲に該当する単語がない。"
+            : "単語を登録すると問題を開始できる。",
+          "add"
+        );
+      }
       return;
     }
 
@@ -1179,7 +1258,7 @@
       return;
     }
 
-    const currentExists = state.words.some((word) => word.id === state.currentQuizWordId);
+    const currentExists = activeQuizWords().some((word) => word.id === state.currentQuizWordId);
     if (!currentExists) {
       chooseNextQuestion(false);
       return;
@@ -1200,7 +1279,7 @@
 
   function findNextExistingSessionWord(startIndex) {
     for (let index = startIndex; index < state.quizSessionIds.length; index++) {
-      const word = state.words.find((item) => item.id === state.quizSessionIds[index]);
+      const word = activeQuizWords().find((item) => item.id === state.quizSessionIds[index]);
       if (word) return { word, index };
     }
     return null;
@@ -1234,7 +1313,7 @@
   }
 
   function renderCurrentQuestion() {
-    const word = state.words.find((item) => item.id === state.currentQuizWordId);
+    const word = activeQuizWords().find((item) => item.id === state.currentQuizWordId);
     if (!word) {
       chooseNextQuestion(false);
       return;
@@ -1303,9 +1382,11 @@
 
   function recordCorrectAnswer(word, expected) {
     word.correct += 1;
-    recordAnswerHistory("correct");
-    if (currentQuizRange() === "today") completeDueReviews(word);
-    saveData();
+    if (!isForestaMode()) {
+      recordAnswerHistory("correct");
+      if (currentQuizRange() === "today") completeDueReviews(word);
+      saveData();
+    }
     finishAnswer(
       "correct",
       `${resultStatusMarkup("correct")}${correctAnswerMarkup(expected, "模範解答：", state.currentDirection === "ja-en" ? expected : "")}`
@@ -1314,10 +1395,12 @@
 
   function recordWrongAnswer(word, expected, note = "") {
     word.mistakes += 1;
-    recordAnswerHistory("wrong");
-    if (currentQuizRange() === "today") completeDueReviews(word);
-    scheduleReview(word);
-    saveData();
+    if (!isForestaMode()) {
+      recordAnswerHistory("wrong");
+      if (currentQuizRange() === "today") completeDueReviews(word);
+      scheduleReview(word);
+      saveData();
+    }
     finishAnswer(
       "wrong",
       `${resultStatusMarkup("wrong", note)}${correctAnswerMarkup(expected, "模範解答：", state.currentDirection === "ja-en" ? expected : "")}`
@@ -1346,7 +1429,7 @@
   function resolveManualJudgement(isCorrect) {
     if (!state.manualJudgePending) return;
 
-    const word = state.words.find((item) => item.id === state.currentQuizWordId);
+    const word = activeQuizWords().find((item) => item.id === state.currentQuizWordId);
     if (!word) return;
 
     state.manualJudgePending = false;
@@ -1364,7 +1447,7 @@
   function checkAnswer() {
     if (state.manualJudgePending) return;
     if (state.answered) return chooseNextQuestion();
-    const word = state.words.find((item) => item.id === state.currentQuizWordId);
+    const word = activeQuizWords().find((item) => item.id === state.currentQuizWordId);
     if (!word) return;
 
     const input = $("#answerInput").value.trim();
@@ -1389,14 +1472,16 @@
 
   function revealAnswer() {
     if (state.answered) return;
-    const word = state.words.find((item) => item.id === state.currentQuizWordId);
+    const word = activeQuizWords().find((item) => item.id === state.currentQuizWordId);
     if (!word) return;
     const expected = state.currentDirection === "en-ja" ? word.japanese : word.english;
     word.mistakes += 1;
-    recordAnswerHistory("revealed");
-    if (currentQuizRange() === "today") completeDueReviews(word);
-    scheduleReview(word);
-    saveData();
+    if (!isForestaMode()) {
+      recordAnswerHistory("revealed");
+      if (currentQuizRange() === "today") completeDueReviews(word);
+      scheduleReview(word);
+      saveData();
+    }
     finishAnswer("wrong", `${resultStatusMarkup("wrong", "答えを表示したため不正解として記録")}${correctAnswerMarkup(expected, "模範解答：", state.currentDirection === "ja-en" ? expected : "")}`);
   }
 
@@ -1978,17 +2063,24 @@
       }
     });
 
+    populateForestaLevelOptions();
+
     $("#startTodayBtn").addEventListener("click", () => {
       $("#quizDirection").value = $("#todayQuizDirection").value;
       switchTab("quiz", { quizMode: "today", autoStart: true });
     });
     $("#startQuizBtn").addEventListener("click", startQuizFromSetup);
+    $("#forestaModeBtn").addEventListener("click", () => showQuizSetup("foresta"));
+    $("#exitForestaModeBtn").addEventListener("click", () => showQuizSetup("standard"));
 
     $("#quizEmptyAction").addEventListener("click", () => {
-      if ($("#quizEmptyAction").dataset.action === "restart") {
+      const action = $("#quizEmptyAction").dataset.action;
+      if (action === "restart") {
         resetQuizSession();
         showQuizPlayView();
         startQuizSession();
+      } else if (action === "setup") {
+        showQuizSetup(state.quizSetupMode);
       } else {
         switchTab("add");
       }
@@ -2007,6 +2099,10 @@
       updateQuizSetupAvailability();
     });
     $("#quizOrder").addEventListener("change", updateQuizSetupAvailability);
+    $("#forestaLevel").addEventListener("change", () => {
+      updateQuizCountControl();
+      updateQuizSetupAvailability();
+    });
     $("#quizCount").addEventListener("change", () => {
       updateQuizCountControl();
       updateQuizSetupAvailability();
