@@ -66,6 +66,19 @@
   const $ = (selector) => document.querySelector(selector);
   const $$ = (selector) => [...document.querySelectorAll(selector)];
 
+  function isCoarsePointerDevice() {
+    return window.matchMedia?.("(pointer: coarse)")?.matches === true;
+  }
+
+  function focusWithoutPageScroll(element) {
+    if (!element) return;
+    try {
+      element.focus({ preventScroll: true });
+    } catch (error) {
+      element.focus();
+    }
+  }
+
   function createDefaultMeta() {
     const now = new Date().toISOString();
     return {
@@ -1395,7 +1408,7 @@
     $("#feedback").hidden = true;
     state.answered = false;
     state.manualJudgePending = false;
-    setTimeout(() => $("#answerInput").focus(), 0);
+    setTimeout(() => focusWithoutPageScroll($("#answerInput")), 0);
   }
 
   function correctAnswerMarkup(expected, label = "模範解答：", englishText = "") {
@@ -1423,7 +1436,9 @@
   function finishAnswer(result, message) {
     state.answered = true;
     state.manualJudgePending = false;
-    $("#answerInput").disabled = true;
+    const answerInput = $("#answerInput");
+    if (document.activeElement === answerInput) answerInput.blur();
+    answerInput.disabled = true;
     $("#checkBtn").hidden = true;
     $("#showAnswerBtn").hidden = true;
     $("#manualJudgeRow").hidden = true;
@@ -1432,7 +1447,7 @@
     $("#feedback").hidden = false;
     $("#feedback").className = `feedback ${result}`;
     $("#feedback").innerHTML = message;
-    $("#nextBtn").focus();
+    if (!isCoarsePointerDevice()) focusWithoutPageScroll($("#nextBtn"));
   }
 
   function recordCorrectAnswer(word, expected) {
@@ -1478,7 +1493,7 @@
       `入力: ${escapeHtml(input)}` +
       correctAnswerMarkup(expected, "登録された答え") +
       `<span class="muted">意味が合っている場合は「正解として扱う」を押す。</span>`;
-    $("#markCorrectBtn").focus();
+    if (!isCoarsePointerDevice()) focusWithoutPageScroll($("#markCorrectBtn"));
   }
 
   function resolveManualJudgement(isCorrect) {

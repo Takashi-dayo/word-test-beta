@@ -8,9 +8,9 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="manifest" href="./manifest.webmanifest?v=7.9" />
-  <link rel="icon" type="image/png" sizes="64x64" href="./icons/icon-64.png?v=7.9" />
-  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png?v=7.9" />
+  <link rel="manifest" href="./manifest.webmanifest?v=8.0" />
+  <link rel="icon" type="image/png" sizes="64x64" href="./icons/icon-64.png?v=8.0" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png?v=8.0" />
   <title>Beta みんなの単語帳 Beta</title>
   <style>
     :root {
@@ -924,22 +924,31 @@
   </style>
 
   <style id="single-character-answer-style">
+    .quiz-answer { position: relative; }
     .single-character-panel {
       display: none;
+      position: relative;
       margin-top: 2px;
       padding: 12px;
       border: 1px solid rgba(255,255,255,.12);
       border-radius: 14px;
       background: rgba(16, 16, 5, .34);
+      overflow: hidden;
     }
     body[data-single-character-answer="true"] .single-character-panel { display: block; }
     .single-character-fields {
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       gap: 7px;
       min-height: 44px;
       align-items: center;
+      overflow-x: auto;
+      overflow-y: hidden;
+      overscroll-behavior-x: contain;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
     }
+    .single-character-fields::-webkit-scrollbar { display: none; }
     .single-character-field {
       width: 42px;
       min-width: 42px;
@@ -985,14 +994,15 @@
     }
     .single-character-field.disabled { opacity: .62; }
     body[data-single-character-answer="true"] #answerInput {
-      position: fixed !important;
-      left: 0 !important;
-      bottom: 0 !important;
-      top: auto !important;
-      width: 1px !important;
-      min-width: 1px !important;
-      height: 1px !important;
-      min-height: 1px !important;
+      position: absolute !important;
+      left: 14px !important;
+      top: 38px !important;
+      right: auto !important;
+      bottom: auto !important;
+      width: 2px !important;
+      min-width: 2px !important;
+      height: 2px !important;
+      min-height: 2px !important;
       margin: 0 !important;
       padding: 0 !important;
       overflow: hidden !important;
@@ -1004,7 +1014,38 @@
       border: 0 !important;
       box-shadow: none !important;
       font-size: 16px !important;
+      transform: none !important;
     }
+
+    /* 解答後の操作を画面内に固定し、結果カードの高さに左右されないようにする。 */
+    #quizNextRow:not([hidden]) {
+      position: fixed;
+      left: 50%;
+      bottom: calc(var(--dock-height) + 18px + env(safe-area-inset-bottom));
+      z-index: 120;
+      width: min(480px, calc(100% - 28px));
+      margin: 0;
+      padding: 8px;
+      transform: translateX(-50%);
+      border: 1px solid rgba(255,255,255,.13);
+      border-radius: 17px;
+      background: rgba(25, 25, 13, .90);
+      box-shadow: 0 12px 34px rgba(0,0,0,.45);
+      backdrop-filter: blur(18px) saturate(140%);
+      -webkit-backdrop-filter: blur(18px) saturate(140%);
+    }
+    #quizNextRow:not([hidden]) #nextBtn {
+      width: 100%;
+      min-height: 50px;
+      padding: 10px 16px;
+      border-radius: 12px;
+      color: #fff;
+      background: var(--blue);
+      font-size: .95rem;
+      font-weight: 780;
+    }
+    body[data-accent="today"] #quizNextRow:not([hidden]) #nextBtn { background: var(--green); }
+    #quizNextRow:not([hidden]) #nextBtn.finish-action { background: var(--green); }
     @media (max-width: 520px) {
       .single-character-panel { padding: 10px; }
       .single-character-fields { gap: 6px; }
@@ -1137,10 +1178,10 @@
               <div class="button-row"><button class="btn primary" type="button" id="checkBtn">答え合わせ</button><button class="btn ghost" type="button" id="showAnswerBtn">答えを見る</button></div>
               <div class="feedback" id="feedback" aria-live="polite" hidden></div>
               <div class="manual-judge-panel" id="manualJudgeRow" hidden><div class="manual-judge-title">この回答をどう記録するか選択</div><div class="manual-judge-actions"><button class="btn approve" type="button" id="markCorrectBtn">正解として扱う</button><button class="btn reject" type="button" id="markWrongBtn">不正解として記録</button></div></div>
-              <div class="quiz-next-row" id="quizNextRow" hidden><button class="btn next-small" type="button" id="nextBtn">次の問題へ</button></div>
             </div>
           </div>
         </div>
+        <div class="quiz-next-row" id="quizNextRow" hidden><button class="btn next-small" type="button" id="nextBtn">次の問題へ</button></div>
       </div>
     </section>
 
@@ -1272,9 +1313,9 @@
 
   <dialog id="editDialog"><form method="dialog" class="dialog-inner" id="editForm"><h2>単語を編集</h2><input type="hidden" id="editId" /><div class="grid"><div><label for="editEnglish">英語</label><input id="editEnglish" autocapitalize="none" spellcheck="true" required /></div><div><label for="editJapanese">日本語訳</label><input id="editJapanese" required /></div></div><div class="button-row"><button class="btn primary" value="save" type="submit">保存</button><button class="btn ghost" value="cancel" type="button" id="cancelEditBtn">キャンセル</button></div></form></dialog>
 
-  <script src="./spell-dictionary.js?v=7.9" defer></script>
-  <script src="./foresta-questions.js?v=7.9" defer></script>
-  <script src="./app.js?v=7.9" defer></script>
+  <script src="./spell-dictionary.js?v=8.0" defer></script>
+  <script src="./foresta-questions.js?v=8.0" defer></script>
+  <script src="./app.js?v=8.0" defer></script>
   <script>
     window.addEventListener("load", () => {
       const input = document.getElementById("quizCount");
@@ -1331,47 +1372,6 @@
       refreshAllButton();
     });
   </script>
-  <script>
-    window.addEventListener("load", () => {
-      const answerInput = document.getElementById("answerInput");
-      const questionLabel = document.getElementById("questionLabel");
-      const directionSelect = document.getElementById("quizDirection");
-      if (!answerInput || !questionLabel) return;
-
-      const setPredictionBlocking = (blocked) => {
-        // 入力文字を見える状態に固定する。
-        // visible text input のまま、Web側で指定可能な予測・自動修正抑止属性を適用する。
-        answerInput.type = blocked ? "password" : "text";
-        answerInput.dataset.predictionBlocked = blocked ? "true" : "false";
-        answerInput.autocomplete = "off";
-        answerInput.setAttribute("autocorrect", "off");
-        answerInput.setAttribute("autocapitalize", "none");
-        answerInput.spellcheck = false;
-        answerInput.inputMode = blocked ? "latin" : "text";
-        answerInput.style.removeProperty("-webkit-text-security");
-      };
-
-      const syncFromQuestion = () => {
-        setPredictionBlocking(questionLabel.textContent.trim() === "英語を入力");
-      };
-
-      // 固定方向では開始ボタンを押した時点でも先に切り替える。
-      document.getElementById("startQuizBtn")?.addEventListener("click", () => {
-        if (directionSelect?.value === "ja-en") setPredictionBlocking(true);
-        else if (directionSelect?.value === "en-ja") setPredictionBlocking(false);
-      }, true);
-
-      // ランダム出題を含め、各問題の方向が決まるたびに追従する。
-      new MutationObserver(syncFromQuestion).observe(questionLabel, {
-        childList: true,
-        characterData: true,
-        subtree: true
-      });
-
-      syncFromQuestion();
-    });
-  </script>
-
   <script id="single-character-answer-script">
     window.addEventListener("load", () => {
       const answerInput = document.getElementById("answerInput");
@@ -1415,6 +1415,9 @@
         }
 
         fieldsHost.replaceChildren(fragment);
+        requestAnimationFrame(() => {
+          fieldsHost.scrollLeft = fieldsHost.scrollWidth;
+        });
       };
 
       const resetFields = ({ focus = false } = {}) => {
@@ -1448,7 +1451,7 @@
       const syncFromQuestion = () => {
         syncQueued = false;
         const isEnglishAnswer = questionLabel.textContent.trim() === "英語を入力";
-        setMode(isEnglishAnswer, { reset: true, focus: isEnglishAnswer });
+        setMode(isEnglishAnswer, { reset: true, focus: false });
       };
 
       const queueQuestionSync = () => {
