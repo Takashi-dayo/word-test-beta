@@ -8,9 +8,9 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="manifest" href="./manifest.webmanifest?v=7.6" />
-  <link rel="icon" type="image/png" sizes="64x64" href="./icons/icon-64.png?v=7.6" />
-  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png?v=7.6" />
+  <link rel="manifest" href="./manifest.webmanifest?v=7.8" />
+  <link rel="icon" type="image/png" sizes="64x64" href="./icons/icon-64.png?v=7.8" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png?v=7.8" />
   <title>Beta みんなの単語帳 Beta</title>
   <style>
     :root {
@@ -972,19 +972,38 @@
       font-size: .76rem;
       line-height: 1.35;
     }
+    .single-character-panel { cursor: text; }
+    .single-character-field { user-select: none; -webkit-user-select: none; }
+    .single-character-field.active {
+      outline: none;
+      border-color: rgba(255, 255, 42, .85);
+      box-shadow: 0 0 0 3px rgba(255, 255, 22, .15);
+    }
+    body[data-accent="today"] .single-character-field.active {
+      border-color: rgba(207, 95, 95, .85);
+      box-shadow: 0 0 0 3px rgba(207, 95, 95, .14);
+    }
+    .single-character-field.disabled { opacity: .62; }
     body[data-single-character-answer="true"] #answerInput {
-      position: absolute !important;
+      position: fixed !important;
+      left: 0 !important;
+      bottom: 0 !important;
+      top: auto !important;
       width: 1px !important;
       min-width: 1px !important;
       height: 1px !important;
-      margin: -1px !important;
+      min-height: 1px !important;
+      margin: 0 !important;
       padding: 0 !important;
       overflow: hidden !important;
-      clip: rect(0 0 0 0) !important;
-      clip-path: inset(50%) !important;
-      white-space: nowrap !important;
-      opacity: 0 !important;
+      opacity: .01 !important;
       pointer-events: none !important;
+      color: transparent !important;
+      caret-color: transparent !important;
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      font-size: 16px !important;
     }
     @media (max-width: 520px) {
       .single-character-panel { padding: 10px; }
@@ -1253,9 +1272,9 @@
 
   <dialog id="editDialog"><form method="dialog" class="dialog-inner" id="editForm"><h2>単語を編集</h2><input type="hidden" id="editId" /><div class="grid"><div><label for="editEnglish">英語</label><input id="editEnglish" autocapitalize="none" spellcheck="true" required /></div><div><label for="editJapanese">日本語訳</label><input id="editJapanese" required /></div></div><div class="button-row"><button class="btn primary" value="save" type="submit">保存</button><button class="btn ghost" value="cancel" type="button" id="cancelEditBtn">キャンセル</button></div></form></dialog>
 
-  <script src="./spell-dictionary.js?v=7.6" defer></script>
-  <script src="./foresta-questions.js?v=7.6" defer></script>
-  <script src="./app.js?v=7.6" defer></script>
+  <script src="./spell-dictionary.js?v=7.8" defer></script>
+  <script src="./foresta-questions.js?v=7.8" defer></script>
+  <script src="./app.js?v=7.8" defer></script>
   <script>
     window.addEventListener("load", () => {
       const input = document.getElementById("quizCount");
@@ -1358,90 +1377,50 @@
       const answerInput = document.getElementById("answerInput");
       const questionLabel = document.getElementById("questionLabel");
       const questionText = document.getElementById("questionText");
+      const panel = document.getElementById("singleCharacterPanel");
       const fieldsHost = document.getElementById("singleCharacterFields");
-      const checkButton = document.getElementById("checkBtn");
       const startQuizButton = document.getElementById("startQuizBtn");
       const directionSelect = document.getElementById("quizDirection");
-      if (!answerInput || !questionLabel || !questionText || !fieldsHost) return;
+      if (!answerInput || !questionLabel || !questionText || !panel || !fieldsHost) return;
 
       let singleCharacterMode = false;
       let syncQueued = false;
 
-      const fields = () => [...fieldsHost.querySelectorAll(".single-character-field")];
-      const currentAnswer = () => fields().map((field) => field.value).join("");
-
-      const focusLastField = () => {
+      const focusAnswerInput = () => {
         if (!singleCharacterMode || answerInput.disabled) return;
-        const list = fields();
-        const target = list.find((field) => !field.value) || list[list.length - 1];
-        target?.focus({ preventScroll: true });
-      };
-
-      const removeFieldsAfter = (index) => {
-        const list = fields();
-        for (let position = list.length - 1; position > index; position -= 1) {
-          list[position].remove();
+        try {
+          answerInput.focus({ preventScroll: true });
+        } catch (error) {
+          answerInput.focus();
         }
       };
 
-      const createField = (index) => {
-        const field = document.createElement("input");
-        field.type = "text";
-        field.className = "single-character-field";
-        field.maxLength = 1;
-        field.autocomplete = "new-password";
-        field.setAttribute("autocorrect", "off");
-        field.setAttribute("autocapitalize", "none");
-        field.spellcheck = false;
-        field.inputMode = "latin";
-        field.enterKeyHint = "done";
-        field.name = `quiz-letter-${index}-${Date.now().toString(36)}`;
-        field.setAttribute("aria-label", `${index + 1}文字目`);
-        field.disabled = answerInput.disabled;
+      const renderFields = () => {
+        if (!singleCharacterMode) return;
+        const characters = Array.from(answerInput.value);
+        const showTrailingField = !answerInput.disabled;
+        const fieldCount = Math.max(1, characters.length + (showTrailingField ? 1 : 0));
+        const fragment = document.createDocumentFragment();
 
-        field.addEventListener("paste", (event) => {
-          event.preventDefault();
-        });
-
-        field.addEventListener("input", () => {
-          const characters = Array.from(field.value);
-          field.value = characters[0] || "";
-          if (!field.value) return;
-
-          removeFieldsAfter(index);
-          const next = createField(index + 1);
-          fieldsHost.append(next);
-          next.focus({ preventScroll: true });
-        });
-
-        field.addEventListener("keydown", (event) => {
-          if (event.key === "Backspace" && !field.value && index > 0) {
-            event.preventDefault();
-            const list = fields();
-            const previous = list[index - 1];
-            field.remove();
-            if (previous) {
-              previous.value = "";
-              previous.focus({ preventScroll: true });
-            }
-            return;
+        for (let index = 0; index < fieldCount; index += 1) {
+          const field = document.createElement("div");
+          field.className = "single-character-field";
+          field.setAttribute("aria-hidden", "true");
+          field.textContent = characters[index] || "";
+          if (answerInput.disabled) field.classList.add("disabled");
+          if (!answerInput.disabled && index === characters.length && document.activeElement === answerInput) {
+            field.classList.add("active");
           }
+          fragment.append(field);
+        }
 
-          if (event.key === "Enter") {
-            event.preventDefault();
-            answerInput.value = currentAnswer();
-            checkButton?.click();
-          }
-        });
-
-        return field;
+        fieldsHost.replaceChildren(fragment);
       };
 
       const resetFields = ({ focus = false } = {}) => {
-        fieldsHost.replaceChildren();
-        fieldsHost.append(createField(0));
         answerInput.value = "";
-        if (focus) requestAnimationFrame(focusLastField);
+        renderFields();
+        if (focus) requestAnimationFrame(focusAnswerInput);
       };
 
       const setMode = (enabled, { reset = true, focus = false } = {}) => {
@@ -1455,6 +1434,7 @@
         answerInput.setAttribute("autocapitalize", "none");
         answerInput.spellcheck = false;
         answerInput.inputMode = singleCharacterMode ? "latin" : "text";
+        answerInput.enterKeyHint = "done";
         answerInput.name = singleCharacterMode ? "quiz-answer-backing-field" : "quiz-answer-no-autofill";
 
         if (singleCharacterMode && (changed || reset)) resetFields({ focus });
@@ -1476,13 +1456,21 @@
         queueMicrotask(syncFromQuestion);
       };
 
-      answerInput.addEventListener("focus", () => {
-        if (singleCharacterMode) requestAnimationFrame(focusLastField);
+      panel.addEventListener("pointerdown", (event) => {
+        if (!singleCharacterMode || answerInput.disabled) return;
+        event.preventDefault();
+        focusAnswerInput();
       });
 
-      checkButton?.addEventListener("click", () => {
-        if (singleCharacterMode) answerInput.value = currentAnswer();
-      }, true);
+      panel.addEventListener("click", () => {
+        focusAnswerInput();
+      });
+
+      answerInput.addEventListener("input", renderFields);
+      answerInput.addEventListener("compositionupdate", renderFields);
+      answerInput.addEventListener("compositionend", renderFields);
+      answerInput.addEventListener("focus", renderFields);
+      answerInput.addEventListener("blur", renderFields);
 
       startQuizButton?.addEventListener("click", () => {
         if (directionSelect?.value === "ja-en") setMode(true, { reset: true, focus: false });
@@ -1500,9 +1488,10 @@
         subtree: true
       });
 
-      new MutationObserver(() => {
-        for (const field of fields()) field.disabled = answerInput.disabled;
-      }).observe(answerInput, { attributes: true, attributeFilter: ["disabled"] });
+      new MutationObserver(renderFields).observe(answerInput, {
+        attributes: true,
+        attributeFilter: ["disabled"]
+      });
 
       setMode(questionLabel.textContent.trim() === "英語を入力", { reset: true, focus: false });
     });
