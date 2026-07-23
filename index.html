@@ -8,9 +8,9 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="manifest" href="./manifest.webmanifest?v=8.0" />
-  <link rel="icon" type="image/png" sizes="64x64" href="./icons/icon-64.png?v=8.0" />
-  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png?v=8.0" />
+  <link rel="manifest" href="./manifest.webmanifest?v=8.1" />
+  <link rel="icon" type="image/png" sizes="64x64" href="./icons/icon-64.png?v=8.1" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png?v=8.1" />
   <title>Beta みんなの単語帳 Beta</title>
   <style>
     :root {
@@ -260,7 +260,19 @@
     body.quiz-playing #panel-quiz.active { min-height: calc(100vh - var(--dock-height) - 86px - env(safe-area-inset-bottom)); }
     .quiz-card { padding: clamp(20px, 5vw, 40px); min-height: 410px; display: grid; align-content: center; text-align: center; }
     .quiz-progress, .question-label { color: var(--muted); font-size: .83rem; font-weight: 700; }
-    .question { margin: 10px 0 14px; font-size: clamp(2.5rem, 10vw, 5.4rem); line-height: 1.05; font-weight: 760; overflow-wrap: anywhere; letter-spacing: -.045em; }
+    .question-line { display: flex; align-items: center; justify-content: center; gap: 9px; margin: 10px 0 14px; }
+    .question { min-width: 0; font-size: clamp(2.5rem, 10vw, 5.4rem); line-height: 1.05; font-weight: 760; overflow-wrap: anywhere; letter-spacing: -.045em; }
+    .question-speak {
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      padding: 0;
+      border-radius: 50%;
+    }
+    .question-speak[hidden] { display: none; }
+    .question-speak svg { width: 18px; height: 18px; }
     .quiz-answer { max-width: 590px; width: 100%; margin: 18px auto 0; text-align: left; }
     .inline-check { display: flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 500; margin-top: 10px; }
     .inline-check input { width: auto; accent-color: var(--blue); }
@@ -275,8 +287,19 @@
     .feedback.correct .correct-answer-card { border-color: var(--green); }
     .feedback.wrong .correct-answer-card { border-color: var(--red); }
     .correct-answer-label { display: block; color: var(--muted); font-size: clamp(.95rem, 3vw, 1.15rem); font-weight: 750; }
-    .correct-answer-text { margin-top: 8px; font-size: clamp(2.7rem, 11vw, 5.6rem); font-weight: 850; line-height: 1.06; letter-spacing: -.05em; overflow-wrap: anywhere; }
-    .correct-answer-card .speak-button { margin-top: 16px; }
+    .correct-answer-line { display: flex; align-items: center; justify-content: center; gap: 9px; margin-top: 8px; }
+    .correct-answer-text { min-width: 0; font-size: clamp(2.7rem, 11vw, 5.6rem); font-weight: 850; line-height: 1.06; letter-spacing: -.05em; overflow-wrap: anywhere; }
+    .correct-answer-card .speak-button {
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      margin: 0;
+      padding: 0;
+      border-radius: 50%;
+    }
+    .correct-answer-card .speak-button svg { width: 18px; height: 18px; }
     .manual-judge-panel { margin-top: 16px; border: 1px solid var(--line); border-radius: 18px; padding: 16px; background: var(--surface-solid); }
     .manual-judge-title { font-weight: 750; margin-bottom: 10px; }
     .manual-judge-actions { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; }
@@ -834,10 +857,21 @@
       border-color: rgba(211, 85, 85, .68);
       box-shadow: inset 0 1px rgba(255,255,255,.05), 0 0 0 1px rgba(133, 42, 42, .12), 0 0 24px rgba(199, 69, 69, .26), 0 22px 58px rgba(0,0,0,.35);
     }
+    .quiz-card.answer-wrong,
+    body[data-accent="today"] .quiz-card.answer-wrong {
+      border-color: rgba(255, 94, 87, .96);
+      box-shadow:
+        inset 0 1px rgba(255,255,255,.05),
+        0 0 0 1px rgba(255,69,58,.22),
+        0 0 30px rgba(255,69,58,.48),
+        0 22px 58px rgba(0,0,0,.38);
+    }
     .quiz-progress { color: #b6bec7; font-size: .9rem; }
     .question-label { margin-top: 6px; color: #e4e4d9; font-size: .9rem; }
+    .question-line {
+      margin: 22px 0 28px;
+    }
     .question {
-      margin: 30px 0 42px;
       font-size: clamp(3.2rem, 17vw, 5.3rem);
       font-weight: 820;
       letter-spacing: -.055em;
@@ -1170,11 +1204,15 @@
         <div class="quiz-card" id="quizCard">
           <div id="quizEmpty"><p class="empty">単語を登録すると問題を開始できる。</p><button class="btn primary" type="button" id="quizEmptyAction">単語を登録する</button></div>
           <div id="quizContent" hidden>
-            <div class="quiz-progress" id="quizProgress"></div><div class="question-label" id="questionLabel">日本語訳を入力</div><div class="question" id="questionText"></div>
-            <button class="speak-button question-speak" type="button" id="speakQuestionBtn" hidden>発音を聞く</button>
+            <div class="quiz-progress" id="quizProgress"></div><div class="question-label" id="questionLabel" hidden aria-hidden="true">日本語訳を入力</div>
+            <div class="question-line">
+              <div class="question" id="questionText"></div>
+              <button class="speak-button question-speak" type="button" id="speakQuestionBtn" aria-label="発音を聞く" title="発音を聞く" hidden>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 5 6.5 9H3v6h3.5l4.5 4V5Z"/><path d="M15 9a4 4 0 0 1 0 6M17.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>
+              </button>
+            </div>
             <div class="quiz-answer">
               <label for="answerInput">回答</label><div class="single-character-panel" id="singleCharacterPanel"><div class="single-character-fields" id="singleCharacterFields" aria-label="英語を1文字ずつ入力"></div><p class="single-character-hint">1文字ごとに入力欄が分かれる。削除はBackspace。</p></div><input id="answerInput" type="text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="text" enterkeyhint="done" name="quiz-answer-no-autofill" placeholder="答えを入力" />
-              <label class="inline-check"><input type="checkbox" id="strictAnswer" />完全一致で判定する</label>
               <div class="button-row"><button class="btn primary" type="button" id="checkBtn">答え合わせ</button><button class="btn ghost" type="button" id="showAnswerBtn">答えを見る</button></div>
               <div class="feedback" id="feedback" aria-live="polite" hidden></div>
               <div class="manual-judge-panel" id="manualJudgeRow" hidden><div class="manual-judge-title">この回答をどう記録するか選択</div><div class="manual-judge-actions"><button class="btn approve" type="button" id="markCorrectBtn">正解として扱う</button><button class="btn reject" type="button" id="markWrongBtn">不正解として記録</button></div></div>
@@ -1313,9 +1351,9 @@
 
   <dialog id="editDialog"><form method="dialog" class="dialog-inner" id="editForm"><h2>単語を編集</h2><input type="hidden" id="editId" /><div class="grid"><div><label for="editEnglish">英語</label><input id="editEnglish" autocapitalize="none" spellcheck="true" required /></div><div><label for="editJapanese">日本語訳</label><input id="editJapanese" required /></div></div><div class="button-row"><button class="btn primary" value="save" type="submit">保存</button><button class="btn ghost" value="cancel" type="button" id="cancelEditBtn">キャンセル</button></div></form></dialog>
 
-  <script src="./spell-dictionary.js?v=8.0" defer></script>
-  <script src="./foresta-questions.js?v=8.0" defer></script>
-  <script src="./app.js?v=8.0" defer></script>
+  <script src="./spell-dictionary.js?v=8.1" defer></script>
+  <script src="./foresta-questions.js?v=8.1" defer></script>
+  <script src="./app.js?v=8.1" defer></script>
   <script>
     window.addEventListener("load", () => {
       const input = document.getElementById("quizCount");

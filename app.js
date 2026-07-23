@@ -1275,6 +1275,7 @@
   }
 
   function showQuizEmpty(message, action = "add") {
+    $("#quizCard").classList.remove("answer-wrong");
     $("#quizEmpty").hidden = false;
     $("#quizContent").hidden = true;
     $("#quizEmpty .empty").textContent = message;
@@ -1406,6 +1407,7 @@
     $("#feedback").className = "feedback";
     $("#feedback").textContent = "";
     $("#feedback").hidden = true;
+    $("#quizCard").classList.remove("answer-wrong");
     state.answered = false;
     state.manualJudgePending = false;
     setTimeout(() => focusWithoutPageScroll($("#answerInput")), 0);
@@ -1413,9 +1415,9 @@
 
   function correctAnswerMarkup(expected, label = "模範解答：", englishText = "") {
     const speakButton = englishText
-      ? `<button class="speak-button" type="button" data-speak="${escapeHtml(englishText)}">🔊 発音を聞く</button>`
+      ? `<button class="speak-button" type="button" data-speak="${escapeHtml(englishText)}" aria-label="${escapeHtml(englishText)}の発音を聞く" title="発音を聞く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M11 5 6.5 9H3v6h3.5l4.5 4V5Z"/><path d="M15 9a4 4 0 0 1 0 6M17.5 6.5a7.5 7.5 0 0 1 0 11"/></svg></button>`
       : "";
-    return `<div class="correct-answer-card"><div class="correct-answer-label">${escapeHtml(label)}</div><div class="correct-answer-text">${escapeHtml(expected)}</div>${speakButton}</div>`;
+    return `<div class="correct-answer-card"><div class="correct-answer-label">${escapeHtml(label)}</div><div class="correct-answer-line"><div class="correct-answer-text">${escapeHtml(expected)}</div>${speakButton}</div></div>`;
   }
 
   function resultStatusMarkup(result, note = "") {
@@ -1447,6 +1449,7 @@
     $("#feedback").hidden = false;
     $("#feedback").className = `feedback ${result}`;
     $("#feedback").innerHTML = message;
+    $("#quizCard").classList.toggle("answer-wrong", result === "wrong");
     if (!isCoarsePointerDevice()) focusWithoutPageScroll($("#nextBtn"));
   }
 
@@ -1529,7 +1532,7 @@
     }
 
     const expected = state.currentDirection === "en-ja" ? word.japanese : word.english;
-    const strict = $("#strictAnswer").checked;
+    const strict = false;
     const correct = isCorrectAnswer(input, expected, strict, state.currentDirection);
     if (correct) {
       recordCorrectAnswer(word, expected);
