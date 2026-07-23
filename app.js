@@ -58,6 +58,7 @@
     quizRangeOverride: null,
     quizSetupMode: "standard",
     forestaSessionWords: [],
+    wordListMode: "standard",
     pendingRegistration: null,
     pendingBulkSpellWarnings: []
   };
@@ -870,7 +871,7 @@
     }
     if (tabName === "today") renderToday();
     if (tabName === "add") showRegistrationChooser();
-    if (tabName === "list") renderWordList();
+    if (tabName === "list") showWordList(state.wordListMode);
     if (tabName === "analysis") requestAnimationFrame(renderAnalysis);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -968,6 +969,59 @@
     $("#wordTable").innerHTML = tableMarkup(sortedWords(filtered, $("#listSort").value));
   }
 
+  function forestaListTableMarkup(words) {
+    if (!words.length) {
+      return '<div class="empty">この級・段に表示できる単語はない。</div>';
+    }
+
+    const rows = words.map((word, index) => `
+      <tr>
+        <td class="word-main-cell" data-label="英語">
+          <div class="english-with-audio">
+            <span class="foresta-number">${String(index + 1).padStart(2, "0")}</span>
+            <strong>${escapeHtml(word.english)}</strong>
+            <button class="speak-button" type="button" data-speak="${escapeHtml(word.english)}" aria-label="${escapeHtml(word.english)}の発音を聞く">🔊</button>
+          </div>
+        </td>
+        <td data-label="日本語訳">${escapeHtml(word.japanese)}</td>
+      </tr>
+    `).join("");
+
+    return `
+      <div class="table-wrap">
+        <table class="foresta-word-list-table">
+          <thead><tr><th>英語</th><th>日本語訳</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderForestaWordList() {
+    const level = $("#forestaListLevel")?.value || FORESTA_LEVEL_OPTIONS[0]?.value || "kyu-20";
+    const query = normalize($("#forestaListSearch")?.value || "");
+    const levelWords = FORESTA_SOURCE_QUESTIONS.filter((word) => word.level === level);
+    const filtered = levelWords.filter((word) =>
+      !query || normalize(word.english).includes(query) || normalize(word.japanese).includes(query)
+    );
+    const levelLabel = FORESTA_LEVEL_OPTIONS.find((option) => option.value === level)?.label || level;
+
+    $("#forestaListCount").textContent = query
+      ? `${levelLabel}・${filtered.length}/${levelWords.length}語`
+      : `${levelLabel}・${levelWords.length}語`;
+    $("#forestaWordTable").innerHTML = forestaListTableMarkup(filtered);
+  }
+
+  function showWordList(mode = "standard") {
+    const forestaMode = mode === "foresta";
+    state.wordListMode = forestaMode ? "foresta" : "standard";
+    $("#standardWordListView").hidden = forestaMode;
+    $("#forestaWordListView").hidden = !forestaMode;
+    if (forestaMode) renderForestaWordList();
+    else renderWordList();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   function renderMistakes() {
     const words = state.words
       .filter((word) => word.mistakes > 0)
@@ -1041,11 +1095,12 @@
   }
 
   function populateForestaLevelOptions() {
-    const select = $("#forestaLevel");
-    if (!select || select.options.length) return;
-    select.innerHTML = FORESTA_LEVEL_OPTIONS
-      .map((option) => `<option value="${escapeHtml(option.value)}">${escapeHtml(option.label)}</option>`)
-      .join("");
+    [$("#forestaLevel"), $("#forestaListLevel")].forEach((select) => {
+      if (!select || select.options.length) return;
+      select.innerHTML = FORESTA_LEVEL_OPTIONS
+        .map((option) => `<option value="${escapeHtml(option.value)}">${escapeHtml(option.label)}</option>`)
+        .join("");
+    });
   }
 
   function showQuizSetup(mode = "standard") {
@@ -2125,6 +2180,13 @@
 
     $("#searchInput").addEventListener("input", renderWordList);
     $("#listSort").addEventListener("change", renderWordList);
+    $("#forestaListModeBtn").addEventListener("click", () => showWordList("foresta"));
+    $("#exitForestaListModeBtn").addEventListener("click", () => showWordList("standard"));
+    $("#forestaListLevel").addEventListener("change", () => {
+      $("#forestaListSearch").value = "";
+      renderForestaWordList();
+    });
+    $("#forestaListSearch").addEventListener("input", renderForestaWordList);
 
     $("#wordTable").addEventListener("click", (event) => {
       const button = event.target.closest("[data-action]");

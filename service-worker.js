@@ -1,11 +1,11 @@
-const CACHE_NAME = "word-study-app-shell-v7-5";
+const CACHE_NAME = "word-study-app-shell-v7-6";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./spell-dictionary.js?v=7.5",
-  "./foresta-questions.js?v=7.5",
-  "./app.js?v=7.5",
-  "./manifest.webmanifest?v=7.5",
+  "./spell-dictionary.js?v=7.6",
+  "./foresta-questions.js?v=7.6",
+  "./app.js?v=7.6",
+  "./manifest.webmanifest?v=7.6",
   "./icons/icon-64.png",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
